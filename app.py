@@ -79,11 +79,10 @@ st.write("Net Income Separate: ", net_income_separate)
 def summarize_marriage_bonus(marriage_bonus):
     # Create a string to summarize the marriage bonus or penalty.
     return (
-        f"If you live separately, your combined net income will be {abs(marriage_bonus):.2f} "
+        f"If you file separately, your combined net income will be ${abs(marriage_bonus):,.2f} "
         f"{'less' if marriage_bonus > 0 else 'more'} "
-        f"({abs(marriage_bonus_percent)*100:.2f}%) than if you file together."
+        f"({abs(marriage_bonus_percent):.2f}%) than if you file together."
     )
-
 
 
 if marriage_bonus > 0:
