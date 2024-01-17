@@ -52,9 +52,10 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
     return simulation.calculate("household_net_income", 2023)[0]
 
 #Streamlit heading and description
-header = st.header("Marriage Incentive App")
-header_description = st.write("Streamlit app evaluates penalties and bonuses based on the state and marriage status of an individual")
-repo_link = st.markdown("Here is the Repo of the application <a href='https://github.com/PolicyEngine/us-marriage-incentive'>link</a>", unsafe_allow_html=True)
+header = st.header("Marriage Incentive Calculator")  
+header_description = st.write("This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income")
+repo_link = st.markdown("This application utilizes the policyengine API <a href='https://github.com/PolicyEngine/us-marriage-incentive'>link</a>", unsafe_allow_html=True)  
+
 
 # Create Streamlit inputs for state code, head income, and spouse income.
 state_code = st.text_input("State Code", "CA")
