@@ -7,20 +7,20 @@ from policyengine_us import Simulation
 # Create a function to get net income for the household, married or separate.
 
 
-def get_net_incomes(state_code, head_employment_income, spouse_employment_income):
+def get_net_incomes(state_code, head_employment_income, spouse_employment_income, children_ages = {}):
     # Tuple of net income for separate and married.
     net_income_married = get_net_income(
-        state_code, head_employment_income, spouse_employment_income
+        state_code, head_employment_income, spouse_employment_income, children_ages
     )
-    net_income_head = get_net_income(state_code, head_employment_income)
-    net_income_spouse = get_net_income(state_code, spouse_employment_income)
+    net_income_head = get_net_income(state_code, head_employment_income, None,children_ages)
+    net_income_spouse = get_net_income(state_code, spouse_employment_income, None, children_ages={})
     return net_income_married, net_income_head + net_income_spouse
 
 
 DEFAULT_AGE = 40
 
 # Create a function to get net income for household
-def get_net_income(state_code, head_employment_income, spouse_employment_income=None):
+def get_net_income(state_code, head_employment_income, spouse_employment_income=None, children_ages = {}):
     # Start by adding the single head.
     situation = {
         "people": {
@@ -38,6 +38,12 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
         }
         # Add your partner to members list.
         members.append("your partner")
+    for key, value in children_ages.items():
+        situation["people"][f"child {key}"] = {
+            "age": {"2023": value}
+        }
+        # Add child to members list.
+        members.append(f"child {key}")
     # Create all parent entities.
     situation["families"] = {"your family": {"members": members}}
     situation["marital_units"] = {"your marital unit": {"members": members}}
@@ -56,10 +62,14 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
 state_code = st.text_input("State Code", "CA")
 head_employment_income = st.number_input("Head Employment Income", 0)
 spouse_employment_income = st.number_input("Spouse Employment Income", 0)
+num_children = st.number_input("number of children", 0)
+children_ages = {}
+for num in range(1,num_children + 1):
+    children_ages[num] = st.number_input(f"child {num} age", 0)
 
 # Get net incomes.
 net_income_married, net_income_separate = get_net_incomes(
-    state_code, head_employment_income, spouse_employment_income
+    state_code, head_employment_income, spouse_employment_income, children_ages
 )
 
 # Determine marriage penalty or bonus, and extent in dollars and percentage.
