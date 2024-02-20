@@ -56,40 +56,42 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
 state_code = st.text_input("State Code", "CA")
 head_employment_income = st.number_input("Head Employment Income", 0)
 spouse_employment_income = st.number_input("Spouse Employment Income", 0)
+submit = st.button("Calculate")
 
-# Get net incomes.
-net_income_married, net_income_separate = get_net_incomes(
-    state_code, head_employment_income, spouse_employment_income
-)
-
-# Determine marriage penalty or bonus, and extent in dollars and percentage.
-marriage_bonus = net_income_married - net_income_separate
-marriage_bonus_percent = marriage_bonus / net_income_married
-
-
-# Display net incomes in Streamlit.
-st.write("Net Income Married: ", net_income_married)
-st.write("Net Income Separate: ", net_income_separate)
-
-# Display marriage bonus or penalty in Streamlit as a sentence.
-# For example, "You face a marriage [PENALTY/BONUS]"
-# "If you file separately, your combined net income will be [X] [more/less] (y%) than if you file together."
-
-
-def summarize_marriage_bonus(marriage_bonus):
-    # Create a string to summarize the marriage bonus or penalty.
-    return (
-        f"If you file separately, your combined net income will be ${abs(marriage_bonus):,.2f} "
-        f"{'less' if marriage_bonus > 0 else 'more'} "
-        f"({abs(marriage_bonus_percent):.2f}%) than if you file together."
+if submit:
+    # Get net incomes.
+    net_income_married, net_income_separate = get_net_incomes(
+        state_code, head_employment_income, spouse_employment_income
     )
 
+    # Determine marriage penalty or bonus, and extent in dollars and percentage.
+    marriage_bonus = net_income_married - net_income_separate
+    marriage_bonus_percent = marriage_bonus / net_income_married
 
-if marriage_bonus > 0:
-    st.write("You face a marriage BONUS.")
-elif marriage_bonus < 0:
-    st.write("You face a marriage PENALTY.")
-else:
-    st.write("You face no marriage penalty or bonus.")
 
-st.write(summarize_marriage_bonus(marriage_bonus))
+    # Display net incomes in Streamlit.
+    st.write("Net Income Married: ", net_income_married)
+    st.write("Net Income Separate: ", net_income_separate)
+
+    # Display marriage bonus or penalty in Streamlit as a sentence.
+    # For example, "You face a marriage [PENALTY/BONUS]"
+    # "If you file separately, your combined net income will be [X] [more/less] (y%) than if you file together."
+
+
+    def summarize_marriage_bonus(marriage_bonus):
+        # Create a string to summarize the marriage bonus or penalty.
+        return (
+            f"If you file separately, your combined net income will be ${abs(marriage_bonus):,.2f} "
+            f"{'less' if marriage_bonus > 0 else 'more'} "
+            f"({abs(marriage_bonus_percent):.2f}%) than if you file together."
+        )
+
+
+    if marriage_bonus > 0:
+        st.write("You face a marriage BONUS.")
+    elif marriage_bonus < 0:
+        st.write("You face a marriage PENALTY.")
+    else:
+        st.write("You face no marriage penalty or bonus.")
+
+    st.write(summarize_marriage_bonus(marriage_bonus))
