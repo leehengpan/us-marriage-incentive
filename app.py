@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 #
 from policyengine_us import Simulation
 
@@ -7,13 +6,13 @@ from policyengine_us import Simulation
 # Create a function to get net income for the household, married or separate.
 
 
-def get_net_incomes(state_code, head_employment_income, spouse_employment_income):
+def get_net_incomes(state_code, head_employment_income, spouse_employment_income, children_ages = {}):
     # Tuple of net income for separate and married.
     net_income_married = get_net_income(
-        state_code, head_employment_income, spouse_employment_income
+        state_code, head_employment_income, spouse_employment_income, children_ages
     )
-    net_income_head = get_net_income(state_code, head_employment_income)
-    net_income_spouse = get_net_income(state_code, spouse_employment_income)
+    net_income_head = get_net_income(state_code, head_employment_income, None,children_ages)
+    net_income_spouse = get_net_income(state_code, spouse_employment_income, None, children_ages={})
     return net_income_married, net_income_head + net_income_spouse
 
 
@@ -53,20 +52,7 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", 2023)[0])
     household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", 2023)[0])
     household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", 2023)[0])
-    snap = int(simulation.calculate( "snap", 2023)[0])
-    school_meal_net_subsidy = int(simulation.calculate("school_meal_net_subsidy", 2023)[0])
-    tanf = int(simulation.calculate("tanf", 2023)[0])
-    spm_unit_wic    = int(simulation.calculate("spm_unit_wic", 2023)[0])
-    medicaid    = int(simulation.calculate("medicaid", 2023)[0])
-    ssi    = int(simulation.calculate("ssi", 2023)[0])
-    eitc = int(simulation.calculate("eitc", 2023)[0])
-    refundable_american_opportunity_credit    = int(simulation.calculate("refundable_american_opportunity_credit", 2023)[0])
-    refundable_ctc    = int(simulation.calculate("refundable_ctc", 2023)[0])
-    recovery_rebate_credit    = int(simulation.calculate("recovery_rebate_credit", 2023)[0])
-    refundable_payroll_tax_credit    = int(simulation.calculate("refundable_payroll_tax_credit", 2023)[0])
-    premium_tax_credit    = int(simulation.calculate("premium_tax_credit", 2023)[0])
-    ecpa_filer_credit    = int(simulation.calculate("ecpa_filer_credit", 2023)[0])
-    ecpa_adult_dependent_credit    = int(simulation.calculate("ecpa_adult_dependent_credit", 2023)[0])
+   
 
     return [household_market_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits]
 def get_categorized_programs(state_code, head_employment_income, spouse_employment_income):
@@ -76,7 +62,7 @@ def get_categorized_programs(state_code, head_employment_income, spouse_employme
      return [programs_married, programs_head, programs_spouse]
 
 # Create a function to get net income for household
-def get_net_income(state_code, head_employment_income, spouse_employment_income=None):
+def get_net_income(state_code, head_employment_income, spouse_employment_income=None, children_ages = {}):
     # Start by adding the single head.
     situation = {
         "people": {
@@ -94,6 +80,12 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
         }
         # Add your partner to members list.
         members.append("your partner")
+    for key, value in children_ages.items():
+        situation["people"][f"child {key}"] = {
+            "age": {"2023": value}
+        }
+        # Add child to members list.
+        members.append(f"child {key}")
     # Create all parent entities.
     situation["families"] = {"your family": {"members": members}}
     situation["marital_units"] = {"your marital unit": {"members": members}}
@@ -117,10 +109,14 @@ repo_link = st.markdown("This application utilizes the policyengine API <a href=
 state_code = st.text_input("State Code", "CA")
 head_employment_income = st.number_input("Head Employment Income", 0)
 spouse_employment_income = st.number_input("Spouse Employment Income", 0)
+num_children = st.number_input("Number of Children", 0)
+children_ages = {}
+for num in range(1,num_children + 1):
+    children_ages[num] = st.number_input(f"Child {num} Age", 0)
 
 # Get net incomes.
 net_income_married, net_income_separate = get_net_incomes(
-    state_code, head_employment_income, spouse_employment_income
+    state_code, head_employment_income, spouse_employment_income, children_ages
 )
 programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income)
 married_programs = programs[0]
