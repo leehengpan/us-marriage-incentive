@@ -113,63 +113,65 @@ num_children = st.number_input("Number of Children", 0)
 children_ages = {}
 for num in range(1,num_children + 1):
     children_ages[num] = st.number_input(f"Child {num} Age", 0)
-
+#submit button
+submit = st.button("Calculate")
 # Get net incomes.
-net_income_married, net_income_separate = get_net_incomes(
-    state_code, head_employment_income, spouse_employment_income, children_ages
-)
-programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income)
-married_programs = programs[0]
-head_separate = programs[1]
-spouse_separate = programs[2]
-separate = [x + y for x, y in zip(head_separate, spouse_separate)]
-delta = [x - y for x, y in zip(married_programs, separate)]
-
-programs = ["household_market_income", "household_benefits", "household_refundable_tax_credits", "household_tax_before_refundable_credits"]
-
-
-
-# Determine marriage penalty or bonus, and extent in dollars and percentage.
-marriage_bonus = net_income_married - net_income_separate
-marriage_bonus_percent = marriage_bonus / net_income_married
-
-
-# Display net incomes in Streamlit.
-st.write("Net Income Married: ", net_income_married)
-st.write("Net Income Not Married: ", net_income_separate)
-
-# Display marriage bonus or penalty in Streamlit as a sentence.
-# For example, "You face a marriage [PENALTY/BONUS]"
-# "If you file separately, your combined net income will be [X] [more/less] (y%) than if you file together."
-
-
-def summarize_marriage_bonus(marriage_bonus):
-    # Create a string to summarize the marriage bonus or penalty.
-    return (
-        f"If you file separately, your combined net income will be ${abs(marriage_bonus):,.2f} "
-        f"{'less' if marriage_bonus > 0 else 'more'} "
-        f"({abs(marriage_bonus_percent):.2f}%) than if you file together."
+if submit:
+    net_income_married, net_income_separate = get_net_incomes(
+        state_code, head_employment_income, spouse_employment_income, children_ages
     )
+    programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income)
+    married_programs = programs[0]
+    head_separate = programs[1]
+    spouse_separate = programs[2]
+    separate = [x + y for x, y in zip(head_separate, spouse_separate)]
+    delta = [x - y for x, y in zip(married_programs, separate)]
+
+    programs = ["household_market_income", "household_benefits", "household_refundable_tax_credits", "household_tax_before_refundable_credits"]
 
 
-if marriage_bonus > 0:
-    st.write("You face a marriage BONUS.")
-elif marriage_bonus < 0:
-    st.write("You face a marriage PENALTY.")
-else:
-    st.write("You face no marriage penalty or bonus.")
 
-st.write(summarize_marriage_bonus(marriage_bonus))
-# Sample data
-data = {
-    'Program': programs,
-    'Married': married_programs,
-    'Not Married': separate,
-    'Delta ': delta
-}
+    # Determine marriage penalty or bonus, and extent in dollars and percentage.
+    marriage_bonus = net_income_married - net_income_separate
+    marriage_bonus_percent = marriage_bonus / net_income_married
 
-# Create a DataFrame
-#df = pd.DataFrame(data)
 
-# Display the table in Streamlit
-st.table(data)
+    # Display net incomes in Streamlit.
+    st.write("Net Income Married: ", net_income_married)
+    st.write("Net Income Not Married: ", net_income_separate)
+
+    # Display marriage bonus or penalty in Streamlit as a sentence.
+    # For example, "You face a marriage [PENALTY/BONUS]"
+    # "If you file separately, your combined net income will be [X] [more/less] (y%) than if you file together."
+
+
+    def summarize_marriage_bonus(marriage_bonus):
+        # Create a string to summarize the marriage bonus or penalty.
+        return (
+            f"If you file separately, your combined net income will be ${abs(marriage_bonus):,.2f} "
+            f"{'less' if marriage_bonus > 0 else 'more'} "
+            f"({abs(marriage_bonus_percent):.2f}%) than if you file together."
+        )
+
+
+    if marriage_bonus > 0:
+        st.write("You face a marriage BONUS.")
+    elif marriage_bonus < 0:
+        st.write("You face a marriage PENALTY.")
+    else:
+        st.write("You face no marriage penalty or bonus.")
+
+    st.write(summarize_marriage_bonus(marriage_bonus))
+    # Sample data
+    data = {
+        'Program': programs,
+        'Married': married_programs,
+        'Not Married': separate,
+        'Delta ': delta
+    }
+
+    # Create a DataFrame
+    #df = pd.DataFrame(data)
+
+    # Display the table in Streamlit
+    st.table(data)
