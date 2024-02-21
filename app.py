@@ -68,7 +68,7 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     ecpa_filer_credit    = int(simulation.calculate("ecpa_filer_credit", 2023)[0])
     ecpa_adult_dependent_credit    = int(simulation.calculate("ecpa_adult_dependent_credit", 2023)[0])
 
-    return [household_market_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits, snap, school_meal_net_subsidy, tanf, spm_unit_wic, medicaid,ssi, eitc, refundable_american_opportunity_credit, refundable_ctc, recovery_rebate_credit, refundable_payroll_tax_credit, premium_tax_credit, ecpa_filer_credit, ecpa_adult_dependent_credit]
+    return [household_market_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits]
 def get_categorized_programs(state_code, head_employment_income, spouse_employment_income):
      programs_married = get_programs(state_code, head_employment_income, spouse_employment_income)
      programs_head = get_programs(state_code, head_employment_income)
@@ -106,11 +106,11 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
     simulation = Simulation(situation=situation)
 
     return simulation.calculate("household_net_income", 2023)[0]
-st.set_page_config(
-    page_title="My Streamlit App",
-    layout="wide",  # or "centered"
-    initial_sidebar_state="expanded"  # or "collapsed"
-)
+# st.set_page_config(
+#     page_title="My Streamlit App",
+#     layout="wide",  # or "centered"
+#     initial_sidebar_state="expanded"  # or "collapsed"
+# )
 
 # Create Streamlit inputs for state code, head income, and spouse income.
 state_code = st.text_input("State Code", "CA")
@@ -126,11 +126,9 @@ married_programs = programs[0]
 head_separate = programs[1]
 spouse_separate = programs[2]
 separate = [x + y for x, y in zip(head_separate, spouse_separate)]
-delta = [abs(x - y) for x, y in zip(married_programs, separate)]
+delta = [x - y for x, y in zip(married_programs, separate)]
 
-programs = ["household_market_income", "household_benefits", "household_refundable_tax_credits", "household_tax_before_refundable_credits", "snap",
-             "school_meal_net_subsidy", "tanf", "spm_unit_wic", "medicaid", "ssi", "eitc", "refundable_american_opportunity_credit", "refundable_ctc",
-               "recovery_rebate_credit", "refundable_payroll_tax_credit", "premium_tax_credit", "ecpa_filer_credit", "ecpa_adult_dependent_credit",]
+programs = ["household_market_income", "household_benefits", "household_refundable_tax_credits", "household_tax_before_refundable_credits"]
 
 
 
@@ -141,7 +139,7 @@ marriage_bonus_percent = marriage_bonus / net_income_married
 
 # Display net incomes in Streamlit.
 st.write("Net Income Married: ", net_income_married)
-st.write("Net Income Separate: ", net_income_separate)
+st.write("Net Income Not Married: ", net_income_separate)
 
 # Display marriage bonus or penalty in Streamlit as a sentence.
 # For example, "You face a marriage [PENALTY/BONUS]"
@@ -167,12 +165,10 @@ else:
 st.write(summarize_marriage_bonus(marriage_bonus))
 # Sample data
 data = {
-    'program': programs,
-    'Joint': married_programs,
-    'Separate': separate,
-    'head_separate': head_separate,
-    'spouse_separate': spouse_separate,
-    'delta (married - separate)': delta
+    'Program': programs,
+    'Married': married_programs,
+    'Not Married': separate,
+    'Delta ': delta
 }
 
 # Create a DataFrame
