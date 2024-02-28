@@ -107,7 +107,7 @@ repo_link = st.markdown("This application utilizes the policyengine API <a href=
 
 # Create Streamlit inputs for state code, head income, and spouse income.
 state_code = st.text_input("State Code", "CA")
-year_options = ["2023", "2022", "2021", "2020"]
+year_options = ["2023", "2022"]
 
 # Select box for state
 year = st.selectbox(
