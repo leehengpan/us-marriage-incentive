@@ -25,16 +25,16 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
     situation = {
         "people": {
             "you": {
-                "age": {"2023": DEFAULT_AGE},
-                "employment_income": {"2023": head_employment_income},
+                "age": {year: DEFAULT_AGE},
+                "employment_income": {year: head_employment_income},
             }
         }
     }
     members = ["you"]
     if spouse_employment_income is not None:
         situation["people"]["your partner"] = {
-            "age": {"2023": DEFAULT_AGE},
-            "employment_income": {"2023": spouse_employment_income},
+            "age": {year: DEFAULT_AGE},
+            "employment_income": {year: spouse_employment_income},
         }
         # Add your partner to members list.
         members.append("your partner")
@@ -44,16 +44,23 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
     situation["tax_units"] = {"your tax unit": {"members": members}}
     situation["spm_units"] = {"your spm_unit": {"members": members}}
     situation["households"] = {
-        "your household": {"members": members, "state_name": {"2023": state_code}}
+        "your household": {"members": members, "state_name": {year: state_code}}
     }
 
     simulation = Simulation(situation=situation)
 
-    return simulation.calculate("household_net_income", 2023)[0]
+    return simulation.calculate("household_net_income", int(year))[0]
 
 
 # Create Streamlit inputs for state code, head income, and spouse income.
 state_code = st.text_input("State Code", "CA")
+year_options = ["2023", "2022", "2021", "2020"]
+
+# Select box for state
+year = st.selectbox(
+    "Select Year",
+    options=year_options
+)
 head_employment_income = st.number_input("Head Employment Income", 0)
 spouse_employment_income = st.number_input("Spouse Employment Income", 0)
 
