@@ -102,7 +102,7 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
 #Streamlit heading and description
 header = st.header("Marriage Incentive Calculator")  
 header_description = st.write("This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income")
-repo_link = st.markdown("This application utilizes the policyengine API <a href='https://github.com/PolicyEngine/us-marriage-incentive'>link</a>", unsafe_allow_html=True)  
+repo_link = st.markdown("This application utilizes <a href='https://github.com/PolicyEngine/us-marriage-incentive'>policyengine API</a>", unsafe_allow_html=True)  
 
 
 # Create Streamlit inputs for state code, head income, and spouse income.
