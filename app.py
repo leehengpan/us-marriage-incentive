@@ -137,8 +137,8 @@ if submit:
 
 
     # Display net incomes in Streamlit.
-    st.write("Net Income Married: ", f"${round(net_income_married)}")
-    st.write("Net Income Not Married: ", f"${round(net_income_separate)}")
+    st.write("Net Income Married: ", "${:,}".format(round(net_income_married)))
+    st.write("Net Income Not Married: ", "${:,}".format(round(net_income_separate)))
 
     # Display marriage bonus or penalty in Streamlit as a sentence.
     # For example, "You face a marriage [PENALTY/BONUS]"
@@ -165,9 +165,9 @@ if submit:
     # Sample data
     data = {
         'Program': programs,
-        'Married': f"${round(married_programs)}",
-        'Not Married': f"${round(separate)}",
-        'Delta ': f"${round(delta)}"
+        'Married': "${:,}".format(round(married_programs)),
+        'Not Married': "${:,}".format(round(separate)),
+        'Delta ': "${:,}".format(round(delta))
     }
 
     # Create a DataFrame
