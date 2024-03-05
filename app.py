@@ -165,9 +165,9 @@ if submit:
     # Sample data
     data = {
         'Program': programs,
-        'Married': "${:,}".format(round(married_programs)),
-        'Not Married': "${:,}".format(round(separate)),
-        'Delta ': "${:,}".format(round(delta))
+        'Married': "${:,}".format(round(married_programs[0])), 
+        'Not Married': "${:,}".format(round(separate[0])),
+        'Delta ': "${:,}".format(round(delta[0]))
     }
 
     # Create a DataFrame
