@@ -24,16 +24,16 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     situation = {
         "people": {
             "you": {
-                "age": {"2023": DEFAULT_AGE},
-                "employment_income": {"2023": head_employment_income},
+                "age": {year: DEFAULT_AGE},
+                "employment_income": {year: head_employment_income},
             }
         }
     }
     members = ["you"]
     if spouse_employment_income is not None:
         situation["people"]["your partner"] = {
-            "age": {"2023": DEFAULT_AGE},
-            "employment_income": {"2023": spouse_employment_income},
+            "age": {year: DEFAULT_AGE},
+            "employment_income": {year: spouse_employment_income},
         }
         # Add your partner to members list.
         members.append("your partner")
@@ -43,7 +43,7 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     situation["tax_units"] = {"your tax unit": {"members": members}}
     situation["spm_units"] = {"your spm_unit": {"members": members}}
     situation["households"] = {
-        "your household": {"members": members, "state_name": {"2023": state_code}}
+        "your household": {"members": members, "state_name": {year: state_code}}
     }
 
     simulation = Simulation(situation=situation)
@@ -97,17 +97,19 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
 
     simulation = Simulation(situation=situation)
 
-    return simulation.calculate("household_net_income", 2023)[0]
+    return simulation.calculate("household_net_income", int(year))[0]
 
 #Streamlit heading and description
 header = st.header("Marriage Incentive Calculator")  
 header_description = st.write("This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income")
-repo_link = st.markdown("This application utilizes the policyengine API <a href='https://github.com/PolicyEngine/us-marriage-incentive'>link</a>", unsafe_allow_html=True)  
+repo_link = st.markdown("This application utilizes <a href='https://github.com/PolicyEngine/us-marriage-incentive'>the policyengine API</a>", unsafe_allow_html=True)  
 
 
 # Create Streamlit inputs for state code, head income, and spouse income.
-options = [s.value for s in pe.StateCode]
-selected_option = st.selectbox("State Code", options)
+state_code = st.text_input("State Code", "CA")
+
+# Select box for state
+year = "2024"
 head_employment_income = st.number_input("Head Employment Income", 0)
 spouse_employment_income = st.number_input("Spouse Employment Income", 0)
 num_children = st.number_input("Number of Children", 0)
@@ -138,8 +140,8 @@ if submit:
 
 
     # Display net incomes in Streamlit.
-    st.write("Net Income Married: ", net_income_married)
-    st.write("Net Income Not Married: ", net_income_separate)
+    st.write("Net Income Married: ", "${:,}".format(round(net_income_married)))
+    st.write("Net Income Not Married: ", "${:,}".format(round(net_income_separate)))
 
     # Display marriage bonus or penalty in Streamlit as a sentence.
     # For example, "You face a marriage [PENALTY/BONUS]"
@@ -166,9 +168,9 @@ if submit:
     # Sample data
     data = {
         'Program': programs,
-        'Married': married_programs,
-        'Not Married': separate,
-        'Delta ': delta
+        'Married': "${:,}".format(round(married_programs[0])), 
+        'Not Married': "${:,}".format(round(separate[0])),
+        'Delta ': "${:,}".format(round(delta[0]))
     }
 
     # Create a DataFrame
