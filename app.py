@@ -1,6 +1,9 @@
 import streamlit as st
 #
 from policyengine_us import Simulation
+from policyengine_us.variables.household.demographic.geographic.state_code import (
+    StateCode,
+)
 
 
 # Create a function to get net income for the household, married or separate.
@@ -106,7 +109,8 @@ repo_link = st.markdown("This application utilizes <a href='https://github.com/P
 
 
 # Create Streamlit inputs for state code, head income, and spouse income.
-state_code = st.text_input("State Code", "CA")
+options = [s.value for s in StateCode]
+state_code = st.selectbox("State Code", options)
 
 # Select box for state
 year = "2024"
