@@ -3,9 +3,8 @@ import plotly.express as px
 from policyengine_us import Simulation
 import plotly.graph_objects as go
 from policyengine_core.charts import format_fig
-
+from plotly.subplots import make_subplots
 # Create a function to get net income for the household, married or separate.
-
 
 def get_net_incomes(state_code, head_employment_income, spouse_employment_income, children_ages = {}):
     # Tuple of net income for separate and married.
@@ -95,12 +94,6 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
     situation["households"] = {
         "your household": {"members": members, "state_name": {"2023": state_code}}
     }
-    # situation["axes"] = [[ {
-    #     "name": "employment_income",
-    #     "count": 200,
-    #     "min": 0,
-    #     "max": 200000
-    #   }]]
   
 
     simulation = Simulation(situation=situation)
@@ -203,52 +196,60 @@ if submit:
         return data
 
         
-    def get_chart(data):
+    def get_chart():
+    # Function to calculate the input data (replace with your actual data calculation)
         # Set numerical values for x and y axes
         x_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
-        y_values = [10000, 20000, 30000, 40000, 50000, 60000,70000,  80000]
+        y_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
 
+        # Display loading spinner while calculating data
+        with st.spinner("Calculating Heatmap... May take 90 seconds"):
+            # Calculate data (replace with your actual data calculation)
+            data = check_child_influence()
+
+        # Display the chart once data calculation is complete
         fig = px.imshow(data,
                         labels=dict(x="Head Employment Income", y="Spouse Employment Income", color="Bonus"),
                         x=x_values,
                         y=y_values,
                         color_continuous_scale=[[0, 'red'], [1, 'green']],
-                       )
+                        origin='lower'
+                    )
 
         fig.update_xaxes(side="bottom")
 
-        x_tick_increment = 20000
         fig.update_layout(
             xaxis=dict(
-            tickmode='linear',
-                dtick=x_tick_increment,
-                tickformat="%{n:.0s}k",
+                tickmode='array',
+                tickvals=[20000, 40000, 60000, 80000],
+                ticktext=["{}k".format(int(val/1000)) for val in [20000, 40000, 60000, 80000]],
                 showgrid=True,
                 zeroline=False,
                 title=dict(text='Head Employment Income', standoff=15),
             ),
             yaxis=dict(
-        tickmode='array',
-        tickvals=[10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],  # Adjust the values as needed
-        ticktext=["{}k".format(int(val/1000)) for val in [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]],
-        showgrid=True,
-        zeroline=False,
-        title=dict(text='Spouse Employment Income', standoff=15),
-        scaleanchor="x",  # Set y-axis to reverse direction
-        scaleratio=1,
+                tickmode='array',
+                tickvals=[10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
+                ticktext=["{}k".format(int(val/1000)) for val in [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]],
+                showgrid=True,
+                zeroline=False,
+                title=dict(text='Spouse Employment Income', standoff=15),
+                scaleanchor="x",
+                scaleratio=1,
             )
-            
-             
         )
 
-        fig.update_traces(colorscale=[[0, 'red'], [1, 'green']], selector=dict(type='heatmap'))
-        fig = format_fig(fig)
+        color_scale_legend = {0: 'Penalty', 1: 'Bonus'}
+        fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers',
+                                marker=dict(color=['red', 'green'], showscale=True,
+                                            colorbar=dict(tickvals=[0, 1], ticktext=list(color_scale_legend.values())))))
+
         # Add header
-        st.markdown("<h3 style='text-align: center; color: black;'>Marriage incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
 
         # Display the chart
-        st.plotly_chart(fig, theme="streamlit")
-    data = check_child_influence()
-    get_chart(data)
+        st.plotly_chart(fig, use_container_width=True)
+    
+    get_chart()
 
 
