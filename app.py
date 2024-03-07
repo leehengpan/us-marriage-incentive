@@ -133,7 +133,7 @@ if submit:
 
     # Determine marriage penalty or bonus, and extent in dollars and percentage.
     marriage_bonus = net_income_married - net_income_separate
-    marriage_bonus_percent = marriage_bonus / net_income_married
+    marriage_bonus_percent = marriage_bonus * 100 / net_income_married
 
 
     # Display net incomes in Streamlit.
