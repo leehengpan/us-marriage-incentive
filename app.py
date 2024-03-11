@@ -187,9 +187,19 @@ if submit:
                 )
                 marriage_bonus = net_income_married - net_income_separate
                 if marriage_bonus > 0:
-                    temp_data.append(1)
+                    if marriage_bonus > 2000:   
+                        temp_data.append(1)
+                    elif marriage_bonus > 500:
+                        temp_data.append(0.8)
+                    else:
+                        temp_data.append(0.6)
                 else:
-                    temp_data.append(0)
+                    if marriage_bonus < -1000:
+                        temp_data.append(0)
+                    elif marriage_bonus < -500:
+                        temp_data.append(0.2)
+                    else:
+                        temp_data.append(0.4)
 
             data.append(temp_data)
 
@@ -212,7 +222,7 @@ if submit:
                         labels=dict(x="Head Employment Income", y="Spouse Employment Income", color="Bonus"),
                         x=x_values,
                         y=y_values,
-                        color_continuous_scale=[[0, 'red'], [1, 'green']],
+                        color_continuous_scale=[[0, "#616161" ],[0.2, "#D2D2D2"], [0.4, "#BDBDBD"], [0.6, "#D8E6F3"],[0.8, "#B1CDE3"], [1, "#2C6496"]],
                         origin='lower'
                     )
 
@@ -221,8 +231,8 @@ if submit:
         fig.update_layout(
             xaxis=dict(
                 tickmode='array',
-                tickvals=[20000, 40000, 60000, 80000],
-                ticktext=["{}k".format(int(val/1000)) for val in [20000, 40000, 60000, 80000]],
+                tickvals=[10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
+                ticktext=["{}k".format(int(val/1000)) for val in [10000,20000, 30000,40000,50000, 60000, 70000, 80000]],
                 showgrid=True,
                 zeroline=False,
                 title=dict(text='Head Employment Income', standoff=15),
@@ -238,12 +248,7 @@ if submit:
                 scaleratio=1,
             )
         )
-
-        color_scale_legend = {0: 'Penalty', 1: 'Bonus'}
-        fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers',
-                                marker=dict(color=['red', 'green'], showscale=True,
-                                            colorbar=dict(tickvals=[0, 1], ticktext=list(color_scale_legend.values())))))
-
+        fig.update_layout(height=600, width=800)
         # Add header
         st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
 
