@@ -157,7 +157,7 @@ if submit:
         return (
             f"If you file separately, your combined net income will be ${abs(marriage_bonus):,.2f} "
             f"{'less' if marriage_bonus > 0 else 'more'} "
-            f"({abs(marriage_bonus_percent):.2f}%) than if you file together."
+            f"({abs(marriage_bonus_percent):.1%}) than if you file together."
         )
 
 
