@@ -1,10 +1,7 @@
 import streamlit as st
 import plotly.express as px
 from policyengine_us import Simulation
-import plotly.graph_objects as go
 from policyengine_core.charts import format_fig
-from plotly.subplots import make_subplots
-import plotly.colors
 # Create a function to get net income for the household, married or separate.
 
 def get_net_incomes(state_code, head_employment_income, spouse_employment_income, children_ages = {}):
