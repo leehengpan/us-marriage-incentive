@@ -282,6 +282,7 @@ if submit:
         st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
         fig = format_fig(fig)
         # Display the chart
+        
         st.plotly_chart(fig, use_container_width=True)
     
     get_chart()
