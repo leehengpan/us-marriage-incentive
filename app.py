@@ -255,7 +255,6 @@ if submit:
         fig.update_coloraxes(
             showscale=True,
             colorscale = color_scale
-
         )
         fig.update_layout(
             xaxis=dict(
