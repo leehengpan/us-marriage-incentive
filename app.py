@@ -165,7 +165,7 @@ if submit:
     }
 
     # Display the table in Streamlit
-    st.table(table_data)
+    st.dataframe(table_data, hide_index=True)
 
 
     def check_child_influence():
