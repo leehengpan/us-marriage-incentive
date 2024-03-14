@@ -45,14 +45,14 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     }
 
     simulation = Simulation(situation=situation)
-    household_market_income = int(simulation.calculate( "household_market_income", 2023)[0])
+    household_net_income = int(simulation.calculate("household_net_income", 2023)[0])
     household_benefits = int(simulation.calculate("household_benefits", 2023)[0])
     household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", 2023)[0])
     household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", 2023)[0])
     household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", 2023)[0])
    
 
-    return [household_market_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits]
+    return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits]
 def get_categorized_programs(state_code, head_employment_income, spouse_employment_income):
      programs_married = get_programs(state_code, head_employment_income, spouse_employment_income)
      programs_head = get_programs(state_code, head_employment_income)
@@ -126,7 +126,7 @@ if submit:
     separate = [x + y for x, y in zip(head_separate, spouse_separate)]
     delta = [x - y for x, y in zip(married_programs, separate)]
 
-    programs = ["household_market_income", "household_benefits", "household_refundable_tax_credits", "household_tax_before_refundable_credits"]
+    programs = ["Net Income", "Benefits", "Refundable tax credits", "Taxes before refundable credits"]
 
 
 
