@@ -2,6 +2,9 @@ import streamlit as st
 import plotly.express as px
 from policyengine_us import Simulation
 from policyengine_core.charts import format_fig
+from policyengine_us.variables.household.demographic.geographic.state_code import (
+    StateCode,
+)
 # Create a function to get net income for the household, married or separate.
 
 def get_net_incomes(state_code, head_employment_income, spouse_employment_income, children_ages = {}):
@@ -101,11 +104,12 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
 #Streamlit heading and description
 header = st.header("Marriage Incentive Calculator")  
 header_description = st.write("This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income")
-repo_link = st.markdown("This application utilizes the policyengine API <a href='https://github.com/PolicyEngine/us-marriage-incentive'>link</a>", unsafe_allow_html=True)  
+repo_link = st.markdown("This application utilizes <a href='https://github.com/PolicyEngine/us-marriage-incentive'>the policyengine API</a>", unsafe_allow_html=True)  
 
 
 # Create Streamlit inputs for state code, head income, and spouse income.
-state_code = st.text_input("State Code", "CA")
+options = [s.value for s in StateCode]
+state_code = st.selectbox("State Code", options)
 head_employment_income = st.number_input("Head Employment Income", step=20000, value=0)
 spouse_employment_income = st.number_input("Spouse Employment Income", step=10000, value=0)
 num_children = st.number_input("Number of Children", 0)
@@ -121,10 +125,14 @@ if submit:
     )
     programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income)
     married_programs = programs[0]
+    formatted_married_programs = list(map(lambda x: "${:,}".format(round(x)), married_programs))
     head_separate = programs[1]
     spouse_separate = programs[2]
     separate = [x + y for x, y in zip(head_separate, spouse_separate)]
+    formatted_separate = list(map(lambda x: "${:,}".format(round(x)), separate))
+    head_separate = programs[1]
     delta = [x - y for x, y in zip(married_programs, separate)]
+    formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
 
     programs = ["household_market_income", "household_benefits", "household_refundable_tax_credits", "household_tax_before_refundable_credits"]
 
@@ -144,7 +152,7 @@ if submit:
         return (
             f"If you file separately, your combined net income will be ${abs(marriage_bonus):,.2f} "
             f"{'less' if marriage_bonus > 0 else 'more'} "
-            f"({abs(marriage_bonus_percent):.2f}%) than if you file together."
+            f"({abs(marriage_bonus_percent):.1%}) than if you file together."
         )
 
 
@@ -159,9 +167,9 @@ if submit:
     # Sample data
     table_data = {
         'Program': programs,
-        'Married': married_programs,
-        'Not Married': separate,
-        'Delta ': delta
+        'Married': formatted_married_programs,
+        'Not Married': formatted_separate,
+        'Delta ': formatted_delta
     }
 
     # Display the table in Streamlit
