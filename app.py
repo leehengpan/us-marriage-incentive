@@ -132,7 +132,9 @@ if submit:
     formatted_separate = list(map(lambda x: "${:,}".format(round(x)), separate))
     head_separate = programs[1]
     delta = [x - y for x, y in zip(married_programs, separate)]
+    delta_percent = [(x - y) / y if y != 0 else 0 for x, y in zip(married_programs, separate)]
     formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
+    formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
 
     programs = ["Net Income", "Benefits", "Refundable tax credits", "Taxes before refundable credits"]
 
@@ -167,9 +169,10 @@ if submit:
     # Sample data
     table_data = {
         'Program': programs,
-        'Married': formatted_married_programs,
         'Not Married': formatted_separate,
-        'Delta ': formatted_delta
+        'Married': formatted_married_programs,
+        'Delta': formatted_delta,
+        'Delta Percentage': formatted_delta_percent
     }
 
     # Display the table in Streamlit
