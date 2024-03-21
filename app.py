@@ -192,33 +192,8 @@ if submit:
                     state_code, head_employment_income, spouse_employment_income
                 )
                 marriage_bonus = net_income_married - net_income_separate
-                if marriage_bonus >= 0:
-                    if marriage_bonus > 5000:   
-                        temp_data.append(1)
-                    elif marriage_bonus > 3000:
-                        temp_data.append(0.9)
-                    elif marriage_bonus > 1000:
-                        temp_data.append(0.8)
-                    elif marriage_bonus > 500:
-                        temp_data.append(0.7)
-                    elif marriage_bonus > 100:
-                        temp_data.append(0.6)
-                    else:
-                        temp_data.append(0.5)
-                else:
-                    if marriage_bonus < -5000:   
-                        temp_data.append(0)
-                    elif marriage_bonus < -3000:
-                        temp_data.append(0.1)
-                    elif marriage_bonus < -1000:
-                        temp_data.append(0.2)
-                    elif marriage_bonus < -500:
-                        temp_data.append(0.3)
-                    elif marriage_bonus < -100:
-                        temp_data.append(0.4)
-                    else:
-                        temp_data.append(0.5)
-        
+                temp_data.append(marriage_bonus)
+           
             data.append(temp_data)
 
         return data
@@ -234,33 +209,27 @@ if submit:
         with st.spinner("Calculating Heatmap... May take 90 seconds"):
             # Calculate data (replace with your actual data calculation)
             data = check_child_influence()
+
+        abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
+        z_min = -abs_max
+        z_max = abs_max
         color_scale = [
-    (0, '#616161'),
-    (0.1, '#757575'),
-    (0.2, '#8A8A8A'),
-    (0.3, '#9E9E9E'),
-    (0.4, '#B3B3B3'),
-    (0.5, '#CCCCCC'),
-    (0.6, '#A4C2D5'),
-    (0.7, '#6E93B7'),
-    (0.8, '#456B9C'),
-    (0.9, '#2C6496'),
-    (1, '#2C6496')
-]
-        
+                (0, '#616161'), 
+                (0.5, '#FFFFFF'),  
+                (1, '#2C6496')  
+                ]
         # Display the chart once data calculation is complete
         fig = px.imshow(data,
                         labels=dict(x="Head Employment Income", y="Spouse Employment Income", color="Bonus"),
                         x=x_values,
                         y=y_values,
+                        zmin=z_min,
+                        zmax=z_max,
+                        color_continuous_scale=color_scale,
                         origin='lower'
                     )
 
         fig.update_xaxes(side="bottom")
-        fig.update_coloraxes(
-            showscale=True,
-            colorscale = color_scale
-        )
         fig.update_layout(
             xaxis=dict(
                 tickmode='array',
