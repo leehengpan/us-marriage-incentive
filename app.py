@@ -20,7 +20,7 @@ def get_net_incomes(state_code, head_employment_income, spouse_employment_income
 DEFAULT_AGE = 40
 
 
-def get_programs(state_code, head_employment_income, spouse_employment_income=None):
+def get_programs(state_code, head_employment_income, spouse_employment_income=None, children_ages = {}):
     # Start by adding the single head.
     situation = {
         "people": {
@@ -38,6 +38,12 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
         }
         # Add your partner to members list.
         members.append("your partner")
+    for key, value in children_ages.items():
+        situation["people"][f"child {key}"] = {
+            "age": {"2023": value}
+        }
+        # Add child to members list.
+        members.append(f"child {key}")
     # Create all parent entities.
     situation["families"] = {"your family": {"members": members}}
     situation["marital_units"] = {"your marital unit": {"members": members}}
@@ -46,20 +52,20 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     situation["households"] = {
         "your household": {"members": members, "state_name": {"2023": state_code}}
     }
+    simulation = Simulation(situation=situation)
 
     simulation = Simulation(situation=situation)
     household_net_income = int(simulation.calculate("household_net_income", 2023)[0])
     household_benefits = int(simulation.calculate("household_benefits", 2023)[0])
     household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", 2023)[0])
-    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", 2023)[0])
     household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", 2023)[0])
    
 
     return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits]
-def get_categorized_programs(state_code, head_employment_income, spouse_employment_income):
-     programs_married = get_programs(state_code, head_employment_income, spouse_employment_income)
-     programs_head = get_programs(state_code, head_employment_income)
-     programs_spouse = get_programs(state_code, spouse_employment_income)
+def get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages):
+     programs_married = get_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
+     programs_head = get_programs(state_code, head_employment_income, None,  children_ages)
+     programs_spouse = get_programs(state_code, spouse_employment_income,None, children_ages)
      return [programs_married, programs_head, programs_spouse]
 
 # Create a function to get net income for household
@@ -120,10 +126,7 @@ for num in range(1,num_children + 1):
 submit = st.button("Calculate")
 # Get net incomes.
 if submit:
-    net_income_married, net_income_separate = get_net_incomes(
-        state_code, head_employment_income, spouse_employment_income, children_ages
-    )
-    programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income)
+    programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
     married_programs = programs[0]
     formatted_married_programs = list(map(lambda x: "${:,}".format(round(x)), married_programs))
     head_separate = programs[1]
@@ -141,13 +144,8 @@ if submit:
 
 
     # Determine marriage penalty or bonus, and extent in dollars and percentage.
-    marriage_bonus = net_income_married - net_income_separate
-    marriage_bonus_percent = marriage_bonus / net_income_married
-
-
-    # Display net incomes in Streamlit.
-    st.write("Net Income Married: ", net_income_married)
-    st.write("Net Income Not Married: ", net_income_separate)
+    marriage_bonus = married_programs[0] - separate[0]
+    marriage_bonus_percent = marriage_bonus / married_programs[0]
 
     def summarize_marriage_bonus(marriage_bonus):
         # Create a string to summarize the marriage bonus or penalty.
@@ -195,33 +193,8 @@ if submit:
                     state_code, head_employment_income, spouse_employment_income
                 )
                 marriage_bonus = net_income_married - net_income_separate
-                if marriage_bonus >= 0:
-                    if marriage_bonus > 5000:   
-                        temp_data.append(1)
-                    elif marriage_bonus > 3000:
-                        temp_data.append(0.9)
-                    elif marriage_bonus > 1000:
-                        temp_data.append(0.8)
-                    elif marriage_bonus > 500:
-                        temp_data.append(0.7)
-                    elif marriage_bonus > 100:
-                        temp_data.append(0.6)
-                    else:
-                        temp_data.append(0.5)
-                else:
-                    if marriage_bonus < -5000:   
-                        temp_data.append(0)
-                    elif marriage_bonus < -3000:
-                        temp_data.append(0.1)
-                    elif marriage_bonus < -1000:
-                        temp_data.append(0.2)
-                    elif marriage_bonus < -500:
-                        temp_data.append(0.3)
-                    elif marriage_bonus < -100:
-                        temp_data.append(0.4)
-                    else:
-                        temp_data.append(0.5)
-        
+                temp_data.append(marriage_bonus)
+           
             data.append(temp_data)
 
         return data
@@ -237,33 +210,27 @@ if submit:
         with st.spinner("Calculating Heatmap... May take 90 seconds"):
             # Calculate data (replace with your actual data calculation)
             data = check_child_influence()
+
+        abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
+        z_min = -abs_max
+        z_max = abs_max
         color_scale = [
-    (0, '#616161'),
-    (0.1, '#757575'),
-    (0.2, '#8A8A8A'),
-    (0.3, '#9E9E9E'),
-    (0.4, '#B3B3B3'),
-    (0.5, '#CCCCCC'),
-    (0.6, '#A4C2D5'),
-    (0.7, '#6E93B7'),
-    (0.8, '#456B9C'),
-    (0.9, '#2C6496'),
-    (1, '#2C6496')
-]
-        
+                (0, '#616161'), 
+                (0.5, '#FFFFFF'),  
+                (1, '#2C6496')  
+                ]
         # Display the chart once data calculation is complete
         fig = px.imshow(data,
                         labels=dict(x="Head Employment Income", y="Spouse Employment Income", color="Bonus"),
                         x=x_values,
                         y=y_values,
+                        zmin=z_min,
+                        zmax=z_max,
+                        color_continuous_scale=color_scale,
                         origin='lower'
                     )
 
         fig.update_xaxes(side="bottom")
-        fig.update_coloraxes(
-            showscale=True,
-            colorscale = color_scale
-        )
         fig.update_layout(
             xaxis=dict(
                 tickmode='array',
