@@ -40,7 +40,8 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
         members.append("your partner")
     for key, value in children_ages.items():
         situation["people"][f"child {key}"] = {
-            "age": {"2023": value}
+            "age": {"2023": value},
+            "employment_income": {"2023": 0}
         }
         # Add child to members list.
         members.append(f"child {key}")
@@ -52,6 +53,16 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     situation["households"] = {
         "your household": {"members": members, "state_name": {"2023": state_code}}
     }
+    situation["axes"] = [
+    [
+      {
+        "name": "employment_income",
+        "count": 200,
+        "min": 0,
+        "max": 200000
+      }
+    ]
+  ]
     simulation = Simulation(situation=situation)
 
     simulation = Simulation(situation=situation)
@@ -89,7 +100,9 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
         members.append("your partner")
     for key, value in children_ages.items():
         situation["people"][f"child {key}"] = {
-            "age": {"2023": value}
+            "age": {"2023": value},
+            "employment_income": {"2023": 0}
+
         }
         # Add child to members list.
         members.append(f"child {key}")
@@ -101,6 +114,16 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
     situation["households"] = {
         "your household": {"members": members, "state_name": {"2023": state_code}}
     }
+    situation["axes"] = [
+    [
+      {
+        "name": "employment_income",
+        "count": 200,
+        "min": 0,
+        "max": 200000
+      }
+    ]
+  ]
   
 
     simulation = Simulation(situation=situation)
@@ -218,7 +241,7 @@ if submit:
                 ]
         # Display the chart once data calculation is complete
         fig = px.imshow(data,
-                        labels=dict(x="Head Employment Income", y="Spouse Employment Income", color="Bonus"),
+                        labels=dict(x="Head Employment Income", y="Spouse Employment Income", color="Net Income Change"),
                         x=x_values,
                         y=y_values,
                         zmin=z_min,
@@ -248,6 +271,7 @@ if submit:
                 scaleratio=1,
             )
         )
+  
         fig.update_layout(height=600, width=800)
         # Add header
         st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
