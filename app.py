@@ -114,7 +114,18 @@ repo_link = st.markdown("This application utilizes <a href='https://github.com/P
 
 
 # Create Streamlit inputs for state code, head income, and spouse income.
-options = [s.value for s in StateCode]
+statecodes = [s.value for s in StateCode]
+us_territories = {
+    "GU" : "Guam", 
+    "MP" : "Northern Mariana Islands",
+    "PW" : "Palau",
+    "PR" : "Puerto Rico",
+    "VI" : "Virgin Islands",
+    "AA" :"Armed Forces Americas (Except Canada)",
+    "AE" : "Armed Forces Africa/Canada/Europe/Middle East",
+    "AP" : "Armed Forces Pacific"
+}
+options = [value for value in statecodes if value not in us_territories]
 state_code = st.selectbox("State Code", options)
 head_employment_income = st.number_input("Head Employment Income", step=20000, value=0)
 spouse_employment_income = st.number_input("Spouse Employment Income", step=10000, value=0)
