@@ -191,7 +191,7 @@ if submit:
 
     # delta
     delta = [x - y for x, y in zip(married_programs, separate)]
-    delta_percent = [(x - y) / x if y != 0 else 0 for x, y in zip(married_programs, separate)]
+    delta_percent = [(x - y) / x if x != 0 else 0 for x, y in zip(married_programs, separate)]
     formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
     formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
 
