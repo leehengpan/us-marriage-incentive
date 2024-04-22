@@ -1,6 +1,5 @@
 import streamlit as st
 import plotly.express as px
-import pandas as pd
 from policyengine_us import Simulation
 from policyengine_core.charts import format_fig
 from policyengine_us.variables.household.demographic.geographic.state_code import (
@@ -56,49 +55,13 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     simulation = Simulation(situation=situation)
 
     simulation = Simulation(situation=situation)
-
-    #benefits breakdown
-    benefits_categories = [
-        "social_security",
-        "ssi",
-        "state_supplement",
-        "co_state_supplement",
-        # State child care subsidies.
-        "ca_child_care_subsidies",
-        "co_child_care_subsidies",
-        "ca_cvrp",  # California Clean Vehicle Rebate Project.
-        "ca_care",
-        "ca_fera",
-        "co_oap",
-        "snap",
-        "wic",
-        "free_school_meals",
-        "reduced_price_school_meals",
-        "spm_unit_broadband_subsidy",
-        "tanf",
-        "high_efficiency_electric_home_rebate",
-        "residential_efficiency_electrification_rebate",
-        "unemployment_compensation",
-        # Contributed.
-        "basic_income",
-        "spm_unit_capped_housing_subsidy",
-    ]
     household_net_income = int(simulation.calculate("household_net_income", 2023)[0])
     household_benefits = int(simulation.calculate("household_benefits", 2023)[0])
     household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", 2023)[0])
     household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", 2023)[0])
-    
-    dic ={}
-    for benefit in benefits_categories:
-        try:
-            benefit_amount = int(simulation.calculate(benefit, 2023)[0])
-        except ValueError:
-            amount = 0
+   
 
-        if benefit_amount:
-            dic[benefit]=benefit_amount
-
-    return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits, dic]
+    return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits]
 def get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages):
      programs_married = get_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
      programs_head = get_programs(state_code, head_employment_income, None,  children_ages)
@@ -164,38 +127,21 @@ submit = st.button("Calculate")
 # Get net incomes.
 if submit:
     programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
-
-    # benefits breakdowns
-    benefits_married =programs[0][-1]
-    benefits_head = programs[1][-1]
-    benefits_spouse = programs[2][-1]
-
-    keys = set(benefits_married.keys()) | set(benefits_head.keys()) | set(benefits_spouse.keys())
-    new_dic={}
-
-    for key in keys:
-        married_val = benefits_married.get(key, 0)
-        head_val = benefits_head.get(key, 0)
-        spouse_val = benefits_spouse.get(key, 0)
-        new_dic[key] = married_val - (head_val + spouse_val)
-
-    # married programs
-    married_programs = programs[0][:-1] # we exclude the last elements which are dictionaries that contain respective breakdowns 
+    married_programs = programs[0]
     formatted_married_programs = list(map(lambda x: "${:,}".format(round(x)), married_programs))
-
-    # separate programs
-    head_separate = programs[1][:-1] # we exclude the last elements which are dictionaries that contain respective breakdowns
-    spouse_separate = programs[2][:-1] # we exclude the last elements which are dictionaries that contain respective breakdowns
+    head_separate = programs[1]
+    spouse_separate = programs[2]
     separate = [x + y for x, y in zip(head_separate, spouse_separate)]
     formatted_separate = list(map(lambda x: "${:,}".format(round(x)), separate))
-
-    # delta
+    head_separate = programs[1]
     delta = [x - y for x, y in zip(married_programs, separate)]
-    delta_percent = [(x - y) / x if x != 0 else 0 for x, y in zip(married_programs, separate)]
+    delta_percent = [(x - y) / x if y != 0 else 0 for x, y in zip(married_programs, separate)]
     formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
     formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
 
     programs = ["Net Income", "Benefits", "Refundable tax credits", "Taxes before refundable credits"]
+
+
 
     # Determine marriage penalty or bonus, and extent in dollars and percentage.
     marriage_bonus = married_programs[0] - separate[0]
@@ -229,19 +175,14 @@ if submit:
     # Display the table in Streamlit
     st.dataframe(table_data, hide_index=True)
 
-    #if benefits are not $0, display breakdown
-    benefits_categories = new_dic.keys()
-    benefits_amounts = new_dic.values()
-    formatted_benefits_amounts = list(map(lambda x: "${:,}".format(round(x)), benefits_amounts))
-    benefits_table = {
-        "Benefits": benefits_categories,
-        "Amounts": formatted_benefits_amounts
-        }
+    with st.expander("Benefits"):
+        st.write("Benefits Breakdown placeholder")
     
-    if benefits_categories: 
-        st.dataframe(benefits_table, hide_index=True)
-
-
+    with st.expander("Refundable tax credits"):
+        st.write("Refundable tax credits Breakdown placeholder")
+    
+    with st.expander("Taxes before refundable credits"):
+        st.write("Taxes before refundable credits Breakdown placeholder")
     def check_child_influence():
         salary_ranges = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
         data = []
