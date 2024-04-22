@@ -17,7 +17,7 @@ def get_net_incomes(state_code, children_ages = {}):
     return net_income_married, net_income_separate
 
 DEFAULT_AGE = 40
-YEAR = "2023"
+YEAR = "2024"
 
 def get_programs(state_code, head_employment_income, spouse_employment_income=None, children_ages = {}):
     # Start by adding the single head.
