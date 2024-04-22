@@ -175,14 +175,7 @@ if submit:
     # Display the table in Streamlit
     st.dataframe(table_data, hide_index=True)
 
-    with st.expander("Benefits"):
-        st.write("Benefits Breakdown placeholder")
-    
-    with st.expander("Refundable tax credits"):
-        st.write("Refundable tax credits Breakdown placeholder")
-    
-    with st.expander("Taxes before refundable credits"):
-        st.write("Taxes before refundable credits Breakdown placeholder")
+
     def check_child_influence():
         salary_ranges = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
         data = []
