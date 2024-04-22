@@ -5,42 +5,42 @@ from policyengine_core.charts import format_fig
 from policyengine_us.variables.household.demographic.geographic.state_code import (
     StateCode,
 )
+import numpy as np
 # Create a function to get net income for the household, married or separate.
 
-def get_net_incomes(state_code, head_employment_income, spouse_employment_income, children_ages = {}):
+def get_net_incomes(state_code, children_ages = {}):
     # Tuple of net income for separate and married.
     net_income_married = get_net_income(
-        state_code, head_employment_income, spouse_employment_income, children_ages
+        state_code, True, children_ages
     )
-    net_income_head = get_net_income(state_code, head_employment_income, None,children_ages)
-    net_income_spouse = get_net_income(state_code, spouse_employment_income, None, children_ages={})
-    return net_income_married, net_income_head + net_income_spouse
-
+    net_income_separate = get_net_income(state_code,None,children_ages)
+    return net_income_married, net_income_separate
 
 DEFAULT_AGE = 40
-
+YEAR = "2024"
 
 def get_programs(state_code, head_employment_income, spouse_employment_income=None, children_ages = {}):
     # Start by adding the single head.
     situation = {
         "people": {
             "you": {
-                "age": {"2023": DEFAULT_AGE},
-                "employment_income": {"2023": head_employment_income},
+                "age": {YEAR: DEFAULT_AGE},
+                "employment_income": {YEAR: head_employment_income},
             }
         }
     }
     members = ["you"]
     if spouse_employment_income is not None:
         situation["people"]["your partner"] = {
-            "age": {"2023": DEFAULT_AGE},
-            "employment_income": {"2023": spouse_employment_income},
+            "age": {YEAR: DEFAULT_AGE},
+            "employment_income": {YEAR: spouse_employment_income},
         }
         # Add your partner to members list.
         members.append("your partner")
     for key, value in children_ages.items():
         situation["people"][f"child {key}"] = {
-            "age": {"2023": value}
+            "age": {YEAR: value},
+            "employment_income": {YEAR: 0}
         }
         # Add child to members list.
         members.append(f"child {key}")
@@ -50,15 +50,16 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     situation["tax_units"] = {"your tax unit": {"members": members}}
     situation["spm_units"] = {"your spm_unit": {"members": members}}
     situation["households"] = {
-        "your household": {"members": members, "state_name": {"2023": state_code}}
+        "your household": {"members": members, "state_name": {YEAR: state_code}}
     }
+  
     simulation = Simulation(situation=situation)
 
     simulation = Simulation(situation=situation)
-    household_net_income = int(simulation.calculate("household_net_income", 2023)[0])
-    household_benefits = int(simulation.calculate("household_benefits", 2023)[0])
-    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", 2023)[0])
-    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", 2023)[0])
+    household_net_income = int(simulation.calculate("household_net_income", int(YEAR))[0])
+    household_benefits = int(simulation.calculate("household_benefits", int(YEAR))[0])
+    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", int(YEAR))[0])
+    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", int(YEAR))[0])
    
 
     return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits]
@@ -69,27 +70,27 @@ def get_categorized_programs(state_code, head_employment_income, spouse_employme
      return [programs_married, programs_head, programs_spouse]
 
 # Create a function to get net income for household
-def get_net_income(state_code, head_employment_income, spouse_employment_income=None, children_ages = {}):
+def get_net_income(state_code, spouse=None, children_ages = {}):
+
+    
     # Start by adding the single head.
     situation = {
         "people": {
             "you": {
-                "age": {"2023": DEFAULT_AGE},
-                "employment_income": {"2023": head_employment_income},
+                "age": {YEAR: DEFAULT_AGE},
             }
         }
     }
     members = ["you"]
-    if spouse_employment_income is not None:
+    if spouse is not None:
         situation["people"]["your partner"] = {
-            "age": {"2023": DEFAULT_AGE},
-            "employment_income": {"2023": spouse_employment_income},
+            "age": {YEAR: DEFAULT_AGE},
         }
         # Add your partner to members list.
         members.append("your partner")
     for key, value in children_ages.items():
         situation["people"][f"child {key}"] = {
-            "age": {"2023": value}
+            "age": {YEAR: value},
         }
         # Add child to members list.
         members.append(f"child {key}")
@@ -99,13 +100,24 @@ def get_net_income(state_code, head_employment_income, spouse_employment_income=
     situation["tax_units"] = {"your tax unit": {"members": members}}
     situation["spm_units"] = {"your spm_unit": {"members": members}}
     situation["households"] = {
-        "your household": {"members": members, "state_name": {"2023": state_code}}
+        "your household": {"members": members, "state_name": {YEAR: state_code}}
     }
+    situation["axes"]= [
+        [
+        {
+            "name": "employment_income",
+            "count": 64,
+            "min": 0,
+            "max": 80000,
+            "period": YEAR
+        }
+        ]
+    ]
   
 
     simulation = Simulation(situation=situation)
 
-    return simulation.calculate("household_net_income", 2023)[0]
+    return simulation.calculate("household_net_income", int(YEAR))
 
 #Streamlit heading and description
 header = st.header("Marriage Incentive Calculator")  
@@ -114,7 +126,18 @@ repo_link = st.markdown("This application utilizes <a href='https://github.com/P
 
 
 # Create Streamlit inputs for state code, head income, and spouse income.
-options = [s.value for s in StateCode]
+statecodes = [s.value for s in StateCode]
+us_territories = {
+    "GU" : "Guam", 
+    "MP" : "Northern Mariana Islands",
+    "PW" : "Palau",
+    "PR" : "Puerto Rico",
+    "VI" : "Virgin Islands",
+    "AA" :"Armed Forces Americas (Except Canada)",
+    "AE" : "Armed Forces Africa/Canada/Europe/Middle East",
+    "AP" : "Armed Forces Pacific"
+}
+options = [value for value in statecodes if value not in us_territories]
 state_code = st.selectbox("State Code", options)
 head_employment_income = st.number_input("Head Employment Income", step=20000, value=0)
 spouse_employment_income = st.number_input("Spouse Employment Income", step=10000, value=0)
@@ -135,7 +158,7 @@ if submit:
     formatted_separate = list(map(lambda x: "${:,}".format(round(x)), separate))
     head_separate = programs[1]
     delta = [x - y for x, y in zip(married_programs, separate)]
-    delta_percent = [(x - y) / x if y != 0 else 0 for x, y in zip(married_programs, separate)]
+    delta_percent = [(x - y) / x if x != 0 else 0 for x, y in zip(married_programs, separate)]
     formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
     formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
 
@@ -176,27 +199,12 @@ if submit:
     st.dataframe(table_data, hide_index=True)
 
 
-    def check_child_influence():
-        salary_ranges = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
-        data = []
-
-        for i in range(len(salary_ranges)):
-            temp_data = []
-            
-            for j in range(len(salary_ranges)):
-                head_employment_income = salary_ranges[i]
-                spouse_employment_income = salary_ranges[j]
-
-                # Assuming get_net_incomes now returns a tuple (net_income_married, net_income_head_spouse)
-                net_income_married,  net_income_separate  = get_net_incomes(
-                    state_code, head_employment_income, spouse_employment_income
-                )
-                marriage_bonus = net_income_married - net_income_separate
-                temp_data.append(marriage_bonus)
-           
-            data.append(temp_data)
-
-        return data
+    def calculate_bonus():
+        married_incomes , separate_incomes = get_net_incomes(state_code, children_ages)
+        bonus_penalties = [x - y for x, y in zip(married_incomes.tolist(), separate_incomes.tolist())]
+        array = np.array(bonus_penalties)
+        nested_lists = np.reshape(array, (8, 8))
+        return nested_lists
 
         
     def get_chart():
@@ -208,7 +216,7 @@ if submit:
         # Display loading spinner while calculating data
         with st.spinner("Calculating Heatmap... May take 90 seconds"):
             # Calculate data (replace with your actual data calculation)
-            data = check_child_influence()
+            data = calculate_bonus()
 
         abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
         z_min = -abs_max
@@ -220,7 +228,7 @@ if submit:
                 ]
         # Display the chart once data calculation is complete
         fig = px.imshow(data,
-                        labels=dict(x="Head Employment Income", y="Spouse Employment Income", color="Bonus"),
+                        labels=dict(x="Head Employment Income", y="Spouse Employment Income", color="Net Income Change"),
                         x=x_values,
                         y=y_values,
                         zmin=z_min,
@@ -250,6 +258,7 @@ if submit:
                 scaleratio=1,
             )
         )
+  
         fig.update_layout(height=600, width=800)
         # Add header
         st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
