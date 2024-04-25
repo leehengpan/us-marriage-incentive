@@ -6,6 +6,7 @@ from policyengine_us.variables.household.demographic.geographic.state_code impor
     StateCode,
 )
 import numpy as np
+import pandas as pd
 # Create a function to get net income for the household, married or separate.
 
 def get_net_incomes(state_code, children_ages = {}):
@@ -205,12 +206,12 @@ if submit:
     formatted_benefits_delta_percent = list(map(lambda x: "{:.1%}".format(x), benefits_delta_percent))
 
     # married programs
-    married_programs = programs[0][:-1] # we exclude the last elements which are dictionaries that contain respective breakdowns 
+    married_programs = programs[0][:-1] # we exclude the last element which is the dictionary of benefits breakdown 
     formatted_married_programs = list(map(lambda x: "${:,}".format(round(x)), married_programs))
     
     # separate programs
-    head_separate = programs[1][:-1] # we exclude the last elements which are dictionaries that contain respective breakdowns
-    spouse_separate = programs[2][:-1] # we exclude the last elements which are dictionaries that contain respective breakdowns
+    head_separate = programs[1][:-1] # we exclude the last element which is the dictionary of benefits breakdown 
+    spouse_separate = programs[2][:-1] # we exclude the last element which is the dictionary of benefits breakdown 
     separate = [x + y for x, y in zip(head_separate, spouse_separate)]
     formatted_separate = list(map(lambda x: "${:,}".format(round(x)), separate))
     
@@ -263,14 +264,17 @@ if submit:
         'Delta Percentage': formatted_benefits_delta_percent
         
     }
+    benefits_df = pd.DataFrame(benefits_table)
+    filtered_benefits_df = benefits_df[(benefits_df['Not Married'] != "$0") | (benefits_df['Married'] != "$0")]
+    
     # Display the tables in Streamlit
-    if benefits_categories: # if we have benefits
+    if not filtered_benefits_df.empty: # if we have benefits
         tab1, tab2 = st.tabs(["Summary", "Benefits Breakdown"])
         with tab1:
             st.dataframe(table_data, hide_index=True)
 
         with tab2:
-            st.dataframe(benefits_table, hide_index=True)
+            st.dataframe(filtered_benefits_df, hide_index=True)
 
     else: # if we don't have benefits, display just the main table
         st.dataframe(table_data, hide_index=True)
