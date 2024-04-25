@@ -168,9 +168,6 @@ if submit:
     benefits_head = programs[1][-1].values()
     benefits_spouse = programs[2][-1].values()
     benefits_separate = [x + y for x, y in zip(benefits_head, benefits_spouse)]
-
-    # to-do update benefits_married and benefits_separate to keep only the non zero values in either list
-
     benefits_delta = [x - y for x, y in zip(benefits_married, benefits_separate)]
     benefits_delta_percent = [(x - y) / x if x != 0 else 0 for x, y in zip(benefits_married, benefits_separate)]
 
@@ -239,6 +236,7 @@ if submit:
         'Delta Percentage': formatted_benefits_delta_percent
         
     }
+    # filter benefits to keep only the non-zero values
     benefits_df = pd.DataFrame(benefits_table)
     filtered_benefits_df = benefits_df[(benefits_df['Not Married'] != "$0") | (benefits_df['Married'] != "$0")]
     
