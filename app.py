@@ -56,8 +56,6 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     }
     simulation = Simulation(situation=situation)
 
-    simulation = Simulation(situation=situation)
-
     #benefits breakdown
     benefits_categories = HouseholdBenefits.adds
 
