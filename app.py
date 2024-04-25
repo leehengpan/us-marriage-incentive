@@ -142,6 +142,7 @@ us_territories = {
     "AP" : "Armed Forces Pacific"
 }
 options = [value for value in statecodes if value not in us_territories]
+data = None
 state_code = st.selectbox("State Code", options)
 head_employment_income = st.number_input("Head Employment Income", step=20000, value=0)
 spouse_employment_income = st.number_input("Spouse Employment Income", step=10000, value=0)
@@ -154,6 +155,8 @@ for num in range(1,num_children + 1):
 
 #submit button
 submit = st.button("Calculate")
+
+#submit.click()
 # Get net incomes.
 if submit:  
     programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
@@ -170,9 +173,6 @@ if submit:
     formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
 
     programs = ["Net Income", "Benefits", "Refundable tax credits", "Taxes before refundable credits"]
-
-
-
 
     # Determine marriage penalty or bonus, and extent in dollars and percentage.
     marriage_bonus = married_programs[0] - separate[0]
@@ -206,11 +206,7 @@ if submit:
     # Display the table in Streamlit
     st.dataframe(table_data, hide_index=True)
 
-
-        
-
-        
-    def get_chart(data, heatmap_tax_unit):
+def get_chart(data, heatmap_tax_unit):
     # Function to calculate the input data (replace with your actual data calculation)
         # Set numerical values for x and y axes
         x_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
@@ -219,7 +215,7 @@ if submit:
             "Income": "Income Change",
             "Benefits": "Benefits Change",
             "Taxes": "Tax Change",
-            "Credits": "Credit"
+            "Credits": "Credit Change"
         }
         abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
         z_min = -abs_max
@@ -269,22 +265,23 @@ if submit:
         # Display the chart
         
         st.plotly_chart(fig, use_container_width=True)
-    @st.cache_data()
-    def calculate_bonus():
-        final_lists = {}
-        for key, _ in HEAT_MAP_OUTPUTS.items():
-            married_incomes , separate_incomes = get_heatmap_values(state_code, children_ages, key)
-            bonus_penalties = [x - y for x, y in zip(married_incomes.tolist(), separate_incomes.tolist())]
-            array = np.array(bonus_penalties)
-            nested_lists = np.reshape(array, (8, 8))
-            final_lists[key] = nested_lists
-        return final_lists
-    data = calculate_bonus()
+@st.cache_data()
+def calculate_bonus():
+    final_lists = {}
+    for key, _ in HEAT_MAP_OUTPUTS.items():
+        married_incomes , separate_incomes = get_heatmap_values(state_code, children_ages, key)
+        bonus_penalties = [x - y for x, y in zip(married_incomes.tolist(), separate_incomes.tolist())]
+        array = np.array(bonus_penalties)
+        nested_lists = np.reshape(array, (8, 8))
+        final_lists[key] = nested_lists
+    return final_lists
+data = calculate_bonus()
 
-    #heatmap_button = st.button("Generate Heatmap")
-    tax_unit_options= ["Income","Benefits", "Taxes", "Credits" ]
-    heatmap_tax_unit = st.selectbox("Heat Map Tax Unit", tax_unit_options)
-    selected_heatmap_values = data[heatmap_tax_unit]
-    #print(selected_heatmap_values)
-    get_chart(selected_heatmap_values, heatmap_tax_unit)
+#heatmap_button = st.button("Generate Heatmap")
+tax_unit_options= ["Income","Benefits", "Taxes", "Credits" ]
+heatmap_tax_unit = st.selectbox("Heat Map Variable", tax_unit_options)
+
+selected_heatmap_values = data[heatmap_tax_unit]
+#print(selected_heatmap_values)
+get_chart(selected_heatmap_values, heatmap_tax_unit)
 
