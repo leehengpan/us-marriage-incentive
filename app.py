@@ -5,6 +5,7 @@ from policyengine_core.charts import format_fig
 from policyengine_us.variables.household.demographic.geographic.state_code import (
     StateCode,
 )
+from policyengine_us.variables.household.income.household.household_benefits import household_benefits as HouseholdBenefits
 import numpy as np
 import pandas as pd
 # Create a function to get net income for the household, married or separate.
@@ -58,31 +59,7 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     simulation = Simulation(situation=situation)
 
     #benefits breakdown
-    benefits_categories = [
-        "social_security",
-        "ssi",
-        "state_supplement",
-        "co_state_supplement",
-        # State child care subsidies.
-        "ca_child_care_subsidies",
-        "co_child_care_subsidies",
-        "ca_cvrp",  # California Clean Vehicle Rebate Project.
-        "ca_care",
-        "ca_fera",
-        "co_oap",
-        "snap",
-        "wic",
-        "free_school_meals",
-        "reduced_price_school_meals",
-        "spm_unit_broadband_subsidy",
-        "tanf",
-        "high_efficiency_electric_home_rebate",
-        "residential_efficiency_electrification_rebate",
-        "unemployment_compensation",
-        # Contributed.
-        "basic_income",
-        "spm_unit_capped_housing_subsidy",
-    ]
+    benefits_categories = HouseholdBenefits.adds
 
     household_net_income = int(simulation.calculate("household_net_income", int(YEAR))[0])
     household_benefits = int(simulation.calculate("household_benefits", int(YEAR))[0])
