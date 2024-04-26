@@ -26,14 +26,17 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
             "you": {
                 "age": {YEAR: DEFAULT_AGE},
                 "employment_income": {YEAR: head_employment_income},
-            },
-            "your partner": {
-                "age": {YEAR: DEFAULT_AGE},
-                "employment_income": {YEAR: spouse_employment_income},
             }
         }
     }
-    members = ["you", "your partner"]
+    members = ["you"]
+    if spouse_employment_income is not None:
+        situation["people"]["your partner"] = {
+            "age": {YEAR: DEFAULT_AGE},
+            "employment_income": {YEAR: spouse_employment_income},
+        }
+        # Add your partner to members list.
+        members.append("your partner")
     for key, value in children_ages.items():
         situation["people"][f"child {key}"] = {
             "age": {YEAR: value},
@@ -51,18 +54,16 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     }
   
     simulation = Simulation(situation=situation)
-
-    simulation = Simulation(situation=situation)
-    household_net_income = int(simulation.calculate("household_net_income", int(YEAR))[0])
-    household_benefits = int(simulation.calculate("household_benefits", int(YEAR))[0])
-    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", int(YEAR))[0])
-    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", int(YEAR))[0])
+    household_net_income = int(simulation.calculate("household_net_income", YEAR))
+    household_benefits = int(simulation.calculate("household_benefits", YEAR))
+    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", int(YEAR)))
+    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", int(YEAR)))
    
 
     return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits]
-def get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages):
-     programs_married = get_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
-     programs_head = get_programs(state_code, head_employment_income, None,  children_ages)
+def get_categorized_programs(state_code, head_employment_income, spouse_employment_income, children_ages):
+     programs_married = get_programs(state_code, head_employment_income, spouse_employment_income, children_ages)
+     programs_head = get_programs(state_code, head_employment_income, None, children_ages)
      programs_spouse = get_programs(state_code, spouse_employment_income,None, children_ages)
      return [programs_married, programs_head, programs_spouse]
 
@@ -136,7 +137,7 @@ us_territories = {
 }
 options = [value for value in statecodes if value not in us_territories]
 state_code = st.selectbox("State Code", options)
-head_employment_income = st.number_input("Head Employment Income", step=20000, value=0)
+head_employment_income = st.number_input("Head Employment Income", step=10000, value=0)
 spouse_employment_income = st.number_input("Spouse Employment Income", step=10000, value=0)
 num_children = st.number_input("Number of Children", 0)
 children_ages = {}
@@ -153,7 +154,6 @@ if submit:
     spouse_separate = programs[2]
     separate = [x + y for x, y in zip(head_separate, spouse_separate)]
     formatted_separate = list(map(lambda x: "${:,}".format(round(x)), separate))
-    head_separate = programs[1]
     delta = [x - y for x, y in zip(married_programs, separate)]
     delta_percent = [(x - y) / x if x != 0 else 0 for x, y in zip(married_programs, separate)]
     formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
