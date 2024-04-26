@@ -24,12 +24,12 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     situation = {
         "people": {
             "you": {
-                "age": {"2023": DEFAULT_AGE},
-                "employment_income": {"2023": head_employment_income},
+                "age": {YEAR: DEFAULT_AGE},
+                "employment_income": {YEAR: head_employment_income},
             },
             "your partner": {
-                "age": {"2023": DEFAULT_AGE},
-                "employment_income": {"2023": spouse_employment_income},
+                "age": {YEAR: DEFAULT_AGE},
+                "employment_income": {YEAR: spouse_employment_income},
             }
         }
     }
