@@ -6,6 +6,7 @@ from policyengine_us.variables.household.demographic.geographic.state_code impor
     StateCode,
 )
 import numpy as np
+import hashlib
 # Create a function to get net income for the household, married or separate.
 
 def get_heatmap_values(state_code, children_ages, tax_unit):
@@ -110,7 +111,16 @@ def get_marital_values(state_code, spouse, children_ages, tax_unit):
         [
         {
             "name": HEAT_MAP_OUTPUTS[tax_unit][1],
-            "count": 64,
+            "count": 8,
+            "min": 0,
+            "max": 80000,
+            "period": YEAR
+        }
+        ],
+         [
+        {
+            "name": HEAT_MAP_OUTPUTS[tax_unit][1],
+            "count": 8,
             "min": 0,
             "max": 80000,
             "period": YEAR
@@ -151,7 +161,9 @@ children_ages = {}
 for num in range(1,num_children + 1):
     children_ages[num] = st.number_input(f"Child {num} Age", 0)
 #Heatmap values type 
-
+#heatmap_button = st.button("Generate Heatmap")
+tax_unit_options= ["Income","Benefits", "Taxes", "Credits" ]
+heatmap_tax_unit = st.selectbox("Heat Map Variable", tax_unit_options)
 
 #submit button
 submit = st.button("Calculate")
@@ -265,21 +277,36 @@ def get_chart(data, heatmap_tax_unit):
         # Display the chart
         
         st.plotly_chart(fig, use_container_width=True)
-@st.cache_data()
-def calculate_bonus():
+@st.cache_data(hash_funcs={dict: lambda _: None})
+def heapmap_calculation(state_code, children_ages_hash, children_ages):
     final_lists = {}
+    print(children_ages_hash)
     for key, _ in HEAT_MAP_OUTPUTS.items():
         married_incomes , separate_incomes = get_heatmap_values(state_code, children_ages, key)
+        print(separate_incomes)
         bonus_penalties = [x - y for x, y in zip(married_incomes.tolist(), separate_incomes.tolist())]
         array = np.array(bonus_penalties)
+        #print(len(bonus_penalties))
         nested_lists = np.reshape(array, (8, 8))
+        #print(nested_lists)
         final_lists[key] = nested_lists
+    print(final_lists)
     return final_lists
-data = calculate_bonus()
 
-#heatmap_button = st.button("Generate Heatmap")
-tax_unit_options= ["Income","Benefits", "Taxes", "Credits" ]
-heatmap_tax_unit = st.selectbox("Heat Map Variable", tax_unit_options)
+children_ages_hash = hashlib.md5(str(children_ages).encode()).hexdigest()
+
+data = heapmap_calculation(state_code, children_ages_hash, children_ages)
+
+# Check if the children_ages dictionary has changed and rerun the calculation
+if "children_ages_hash" not in st.session_state:
+    st.session_state.children_ages_hash = children_ages_hash
+else:
+    # Check if the children_ages dictionary has changed and update the hash
+    if st.session_state.children_ages_hash != children_ages_hash:
+        st.session_state.children_ages_hash = children_ages_hash
+
+
+
 
 selected_heatmap_values = data[heatmap_tax_unit]
 #print(selected_heatmap_values)
