@@ -8,7 +8,6 @@ from policyengine_us.variables.household.demographic.geographic.state_code impor
 import numpy as np
 import hashlib
 # Create a function to get net income for the household, married or separate.
-
 def get_heatmap_values(state_code, children_ages, tax_unit):
     # Tuple of net income for separate and married.
     net_income_married = get_marital_values(
@@ -25,6 +24,7 @@ HEAT_MAP_OUTPUTS = {
     "Taxes": ["household_tax_before_refundable_credits","employment_income"] , 
     "Credits": ["household_refundable_tax_credits", "employment_income"]
 }
+
 def get_programs(state_code, head_employment_income, spouse_employment_income=None, children_ages = {}):
     # Start by adding the single head.
     situation = {
@@ -77,7 +77,6 @@ def get_categorized_programs(state_code, head_employment_income, spouse_employme
 
 # Create a function to get net income for household
 def get_marital_values(state_code, spouse, children_ages, tax_unit):
-
     # Start by adding the single head.
     situation = {
         "people": {
@@ -130,7 +129,6 @@ def get_marital_values(state_code, spouse, children_ages, tax_unit):
   
 
     simulation = Simulation(situation=situation)
-
     return simulation.calculate(HEAT_MAP_OUTPUTS[tax_unit][0], int(YEAR))
 
 #Streamlit heading and description
@@ -152,7 +150,6 @@ us_territories = {
     "AP" : "Armed Forces Pacific"
 }
 options = [value for value in statecodes if value not in us_territories]
-data = None
 state_code = st.selectbox("State Code", options)
 head_employment_income = st.number_input("Head Employment Income", step=20000, value=0)
 spouse_employment_income = st.number_input("Spouse Employment Income", step=10000, value=0)
@@ -170,6 +167,7 @@ submit = st.button("Calculate")
 
 #submit.click()
 # Get net incomes.
+
 if submit:  
     programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
     married_programs = programs[0]
@@ -181,6 +179,7 @@ if submit:
     head_separate = programs[1]
     delta = [x - y for x, y in zip(married_programs, separate)]
     delta_percent = [(x - y) / x if y != 0 and x != 0 else 0 for x, y in zip(married_programs, separate)]
+
     formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
     formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
 
@@ -219,16 +218,19 @@ if submit:
     st.dataframe(table_data, hide_index=True)
 
 def get_chart(data, heatmap_tax_unit):
+
     # Function to calculate the input data (replace with your actual data calculation)
         # Set numerical values for x and y axes
         x_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
         y_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+
         label_legend = {
             "Income": "Income Change",
             "Benefits": "Benefits Change",
             "Taxes": "Tax Change",
             "Credits": "Credit Change"
         }
+
         abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
         z_min = -abs_max
         z_max = abs_max
@@ -239,7 +241,9 @@ def get_chart(data, heatmap_tax_unit):
                 ]
         # Display the chart once data calculation is complete
         fig = px.imshow(data,
+
                         labels=dict(x="Head Employment Income", y="Spouse Employment Income", color= label_legend[heatmap_tax_unit]),
+
                         x=x_values,
                         y=y_values,
                         zmin=z_min,
@@ -270,6 +274,7 @@ def get_chart(data, heatmap_tax_unit):
             )
         )
 
+ 
         fig.update_layout(height=600, width=800)
         # Add header
         st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
