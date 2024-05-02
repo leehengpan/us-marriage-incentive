@@ -59,7 +59,7 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     #benefits breakdown
     benefits_categories = HouseholdBenefits.adds
 
-     household_net_income = int(simulation.calculate("household_net_income", YEAR))
+    household_net_income = int(simulation.calculate("household_net_income", YEAR))
     household_benefits = int(simulation.calculate("household_benefits", YEAR))
     household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", int(YEAR)))
     household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", int(YEAR)))
