@@ -59,10 +59,10 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     #benefits breakdown
     benefits_categories = HouseholdBenefits.adds
 
-    household_net_income = int(simulation.calculate("household_net_income", int(YEAR))[0])
-    household_benefits = int(simulation.calculate("household_benefits", int(YEAR))[0])
-    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", int(YEAR))[0])
-    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", int(YEAR))[0])
+     household_net_income = int(simulation.calculate("household_net_income", YEAR))
+    household_benefits = int(simulation.calculate("household_benefits", YEAR))
+    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", int(YEAR)))
+    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", int(YEAR)))
     
     benefits_dic ={}
     for benefit in benefits_categories:
@@ -74,9 +74,11 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
         benefits_dic[benefit]=benefit_amount
 
     return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits, benefits_dic]
-def get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages):
-     programs_married = get_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
-     programs_head = get_programs(state_code, head_employment_income, None,  children_ages)
+   
+def get_categorized_programs(state_code, head_employment_income, spouse_employment_income, children_ages):
+     programs_married = get_programs(state_code, head_employment_income, spouse_employment_income, children_ages)
+     programs_head = get_programs(state_code, head_employment_income, None, children_ages)
+
      programs_spouse = get_programs(state_code, spouse_employment_income,None, children_ages)
      return [programs_married, programs_head, programs_spouse]
 
@@ -150,7 +152,7 @@ us_territories = {
 }
 options = [value for value in statecodes if value not in us_territories]
 state_code = st.selectbox("State Code", options)
-head_employment_income = st.number_input("Head Employment Income", step=20000, value=0)
+head_employment_income = st.number_input("Head Employment Income", step=10000, value=0)
 spouse_employment_income = st.number_input("Spouse Employment Income", step=10000, value=0)
 num_children = st.number_input("Number of Children", 0)
 children_ages = {}
