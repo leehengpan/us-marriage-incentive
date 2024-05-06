@@ -14,7 +14,14 @@ def get_heatmap_values(state_code, children_ages, tax_unit):
         state_code, True, children_ages, tax_unit
     )
     net_income_separate = get_marital_values(state_code,False,children_ages, tax_unit)
-    return net_income_married, net_income_separate
+    final_separate = []
+    for val in net_income_separate:
+        temp_array = []
+        for val2 in net_income_separate:
+            temp_array.append(val + val2)
+        final_separate.append(temp_array)
+
+    return net_income_married, final_separate
 
 DEFAULT_AGE = 40
 YEAR = "2024"
@@ -106,26 +113,44 @@ def get_marital_values(state_code, spouse, children_ages, tax_unit):
     situation["households"] = {
         "your household": {"members": members, "state_name": {YEAR: state_code}}
     }
-    situation["axes"]= [
-        [
-        {
-            "name": HEAT_MAP_OUTPUTS[tax_unit][1],
-            "count": 8,
-            "min": 0,
-            "max": 80000,
-            "period": YEAR
-        }
-        ],
-         [
-        {
-            "name": HEAT_MAP_OUTPUTS[tax_unit][1],
-            "count": 8,
-            "min": 0,
-            "max": 80000,
-            "period": YEAR
-        }
+    if spouse:
+        situation["axes"]= [
+            [
+            {
+                "name": HEAT_MAP_OUTPUTS[tax_unit][1],
+                "count": 8,
+                "index": 0,
+                "min": 10000,
+                "max": 80000,
+                "period": YEAR
+            }
+            ],
+            [
+            {
+                "name": HEAT_MAP_OUTPUTS[tax_unit][1],
+                "count": 8,
+                "index": 1,
+                "min": 10000,
+                "max": 80000,
+                "period": YEAR
+            }
+            ]
         ]
-    ]
+    else:
+         situation["axes"]= [
+            [
+            {
+                "name": HEAT_MAP_OUTPUTS[tax_unit][1],
+                "count": 8,
+                "min": 10000,
+                "max": 80000,
+                "period": YEAR
+            }
+          
+            ]
+           
+        ]
+
   
 
     simulation = Simulation(situation=situation)
@@ -285,17 +310,13 @@ def get_chart(data, heatmap_tax_unit):
 @st.cache_data(hash_funcs={dict: lambda _: None})
 def heapmap_calculation(state_code, children_ages_hash, children_ages):
     final_lists = {}
-    print(children_ages_hash)
+  
     for key, _ in HEAT_MAP_OUTPUTS.items():
         married_incomes , separate_incomes = get_heatmap_values(state_code, children_ages, key)
-        print(separate_incomes)
-        bonus_penalties = [x - y for x, y in zip(married_incomes.tolist(), separate_incomes.tolist())]
-        array = np.array(bonus_penalties)
-        #print(len(bonus_penalties))
-        nested_lists = np.reshape(array, (8, 8))
-        #print(nested_lists)
-        final_lists[key] = nested_lists
-    print(final_lists)
+        married_list = married_incomes.tolist()
+        nested_list_married = [married_list[i:i+8] for i in range(0, len(married_list), 8)]
+        bonus_penalties =[[y - x for x, y in zip(sublist2, sublist1)] for sublist1, sublist2 in zip(nested_list_married, separate_incomes)]
+        final_lists[key] = bonus_penalties
     return final_lists
 
 children_ages_hash = hashlib.md5(str(children_ages).encode()).hexdigest()
@@ -314,6 +335,5 @@ else:
 
 
 selected_heatmap_values = data[heatmap_tax_unit]
-#print(selected_heatmap_values)
 get_chart(selected_heatmap_values, heatmap_tax_unit)
 
