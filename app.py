@@ -8,18 +8,31 @@ from policyengine_us.variables.household.demographic.geographic.state_code impor
 from policyengine_us.variables.household.income.household.household_benefits import household_benefits as HouseholdBenefits
 import numpy as np
 import pandas as pd
+import hashlib
 # Create a function to get net income for the household, married or separate.
-
-def get_net_incomes(state_code, children_ages = {}):
+def get_heatmap_values(state_code, children_ages, tax_unit):
     # Tuple of net income for separate and married.
-    net_income_married = get_net_income(
-        state_code, True, children_ages
+    net_income_married = get_marital_values(
+        state_code, True, children_ages, tax_unit
     )
-    net_income_separate = get_net_income(state_code,None,children_ages)
-    return net_income_married, net_income_separate
+    net_income_separate = get_marital_values(state_code,False,children_ages, tax_unit)
+    final_separate = []
+    for val in net_income_separate:
+        temp_array = []
+        for val2 in net_income_separate:
+            temp_array.append(val + val2)
+        final_separate.append(temp_array)
+
+    return net_income_married, final_separate
 
 DEFAULT_AGE = 40
 YEAR = "2024"
+HEAT_MAP_OUTPUTS = {
+    "Income": ["household_net_income","employment_income"],
+    "Benefits":["household_benefits", "employment_income"],
+    "Taxes": ["household_tax_before_refundable_credits","employment_income"] , 
+    "Credits": ["household_refundable_tax_credits", "employment_income"]
+}
 
 def get_programs(state_code, head_employment_income, spouse_employment_income=None, children_ages = {}):
     # Start by adding the single head.
@@ -83,9 +96,7 @@ def get_categorized_programs(state_code, head_employment_income, spouse_employme
      return [programs_married, programs_head, programs_spouse]
 
 # Create a function to get net income for household
-def get_net_income(state_code, spouse=None, children_ages = {}):
-
-    
+def get_marital_values(state_code, spouse, children_ages, tax_unit):
     # Start by adding the single head.
     situation = {
         "people": {
@@ -95,7 +106,7 @@ def get_net_income(state_code, spouse=None, children_ages = {}):
         }
     }
     members = ["you"]
-    if spouse is not None:
+    if spouse:
         situation["people"]["your partner"] = {
             "age": {YEAR: DEFAULT_AGE},
         }
@@ -115,22 +126,48 @@ def get_net_income(state_code, spouse=None, children_ages = {}):
     situation["households"] = {
         "your household": {"members": members, "state_name": {YEAR: state_code}}
     }
-    situation["axes"]= [
-        [
-        {
-            "name": "employment_income",
-            "count": 64,
-            "min": 0,
-            "max": 80000,
-            "period": YEAR
-        }
+    if spouse:
+        situation["axes"]= [
+            [
+            {
+                "name": HEAT_MAP_OUTPUTS[tax_unit][1],
+                "count": 8,
+                "index": 0,
+                "min": 10000,
+                "max": 80000,
+                "period": YEAR
+            }
+            ],
+            [
+            {
+                "name": HEAT_MAP_OUTPUTS[tax_unit][1],
+                "count": 8,
+                "index": 1,
+                "min": 10000,
+                "max": 80000,
+                "period": YEAR
+            }
+            ]
         ]
-    ]
+    else:
+         situation["axes"]= [
+            [
+            {
+                "name": HEAT_MAP_OUTPUTS[tax_unit][1],
+                "count": 8,
+                "min": 10000,
+                "max": 80000,
+                "period": YEAR
+            }
+          
+            ]
+           
+        ]
+
   
 
     simulation = Simulation(situation=situation)
-
-    return simulation.calculate("household_net_income", int(YEAR))
+    return simulation.calculate(HEAT_MAP_OUTPUTS[tax_unit][0], int(YEAR))
 
 #Streamlit heading and description
 header = st.header("Marriage Incentive Calculator")  
@@ -158,10 +195,18 @@ num_children = st.number_input("Number of Children", 0)
 children_ages = {}
 for num in range(1,num_children + 1):
     children_ages[num] = st.number_input(f"Child {num} Age", 0)
+#Heatmap values type 
+#heatmap_button = st.button("Generate Heatmap")
+tax_unit_options= ["Income","Benefits", "Taxes", "Credits" ]
+heatmap_tax_unit = st.selectbox("Heat Map Variable", tax_unit_options)
+
 #submit button
 submit = st.button("Calculate")
+
+#submit.click()
 # Get net incomes.
-if submit:
+
+if submit:  
     programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
     
     # benefits breakdowns
@@ -191,7 +236,8 @@ if submit:
     
     # delta
     delta = [x - y for x, y in zip(married_programs, separate)]
-    delta_percent = [(x - y) / x if x != 0 else 0 for x, y in zip(married_programs, separate)]
+    delta_percent = [(x - y) / x if x != 0 and x != 0 else 0 for x, y in zip(married_programs, separate)]
+
     formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
     formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
 
@@ -262,16 +308,18 @@ if submit:
         return nested_lists
 
         
-    def get_chart():
+def get_chart(data, heatmap_tax_unit):
     # Function to calculate the input data (replace with your actual data calculation)
         # Set numerical values for x and y axes
         x_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
         y_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
 
-        # Display loading spinner while calculating data
-        with st.spinner("Calculating Heatmap... May take 90 seconds"):
-            # Calculate data (replace with your actual data calculation)
-            data = calculate_bonus()
+        label_legend = {
+            "Income": "Income Change",
+            "Benefits": "Benefits Change",
+            "Taxes": "Tax Change",
+            "Credits": "Credit Change"
+        }
 
         abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
         z_min = -abs_max
@@ -283,7 +331,9 @@ if submit:
                 ]
         # Display the chart once data calculation is complete
         fig = px.imshow(data,
-                        labels=dict(x="Head Employment Income", y="Spouse Employment Income", color="Net Income Change"),
+
+                        labels=dict(x="Head Employment Income", y="Spouse Employment Income", color= label_legend[heatmap_tax_unit]),
+
                         x=x_values,
                         y=y_values,
                         zmin=z_min,
@@ -313,7 +363,8 @@ if submit:
                 scaleratio=1,
             )
         )
-  
+
+ 
         fig.update_layout(height=600, width=800)
         # Add header
         st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
@@ -321,7 +372,33 @@ if submit:
         # Display the chart
         
         st.plotly_chart(fig, use_container_width=True)
-    
-    get_chart()
+@st.cache_data(hash_funcs={dict: lambda _: None})
+def heapmap_calculation(state_code, children_ages_hash, children_ages):
+    final_lists = {}
+  
+    for key, _ in HEAT_MAP_OUTPUTS.items():
+        married_incomes , separate_incomes = get_heatmap_values(state_code, children_ages, key)
+        married_list = married_incomes.tolist()
+        nested_list_married = [married_list[i:i+8] for i in range(0, len(married_list), 8)]
+        bonus_penalties =[[y - x for x, y in zip(sublist2, sublist1)] for sublist1, sublist2 in zip(nested_list_married, separate_incomes)]
+        final_lists[key] = bonus_penalties
+    return final_lists
 
+children_ages_hash = hashlib.md5(str(children_ages).encode()).hexdigest()
+
+data = heapmap_calculation(state_code, children_ages_hash, children_ages)
+
+# Check if the children_ages dictionary has changed and rerun the calculation
+if "children_ages_hash" not in st.session_state:
+    st.session_state.children_ages_hash = children_ages_hash
+else:
+    # Check if the children_ages dictionary has changed and update the hash
+    if st.session_state.children_ages_hash != children_ages_hash:
+        st.session_state.children_ages_hash = children_ages_hash
+
+
+
+
+selected_heatmap_values = data[heatmap_tax_unit]
+get_chart(selected_heatmap_values, heatmap_tax_unit)
 
