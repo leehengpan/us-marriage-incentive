@@ -7,7 +7,7 @@ from policyengine_us.variables.household.demographic.geographic.state_code impor
 )
 from policyengine_us.variables.household.income.household.household_benefits import household_benefits as HouseholdBenefits
 import numpy as np
-import hashlib
+import pandas as pd
 # Create a function to get net income for the household, married or separate.
 def get_heatmap_values(state_code, children_ages, tax_unit):
     # Tuple of net income for separate and married.
@@ -235,7 +235,7 @@ if submit:
     
     # delta
     delta = [x - y for x, y in zip(married_programs, separate)]
-    delta_percent = [(x - y) / x if x != 0 and x != 0 else 0 for x, y in zip(married_programs, separate)]
+    delta_percent = [(x - y) / x if y != 0 and x != 0 else 0 for x, y in zip(married_programs, separate)]
 
     formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
     formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
@@ -293,7 +293,21 @@ if submit:
         with tab1:
             st.dataframe(table_data, hide_index=True)
 
-def get_chart(data, heatmap_tax_unit):
+        with tab2:
+            st.dataframe(filtered_benefits_df, hide_index=True)
+
+    else: # if we don't have benefits, display just the main table
+        st.dataframe(table_data, hide_index=True)
+    
+    def calculate_bonus():
+        married_incomes , separate_incomes = get_net_incomes(state_code, children_ages)
+        bonus_penalties = [x - y for x, y in zip(married_incomes.tolist(), separate_incomes.tolist())]
+        array = np.array(bonus_penalties)
+        nested_lists = np.reshape(array, (8, 8))
+        return nested_lists
+
+        
+    def get_chart():
     # Function to calculate the input data (replace with your actual data calculation)
         # Set numerical values for x and y axes
         x_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
