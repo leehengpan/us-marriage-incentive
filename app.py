@@ -5,8 +5,9 @@ from policyengine_core.charts import format_fig
 from policyengine_us.variables.household.demographic.geographic.state_code import (
     StateCode,
 )
+from policyengine_us.variables.household.income.household.household_benefits import household_benefits as HouseholdBenefits
 import numpy as np
-import hashlib
+import pandas as pd
 # Create a function to get net income for the household, married or separate.
 def get_heatmap_values(state_code, children_ages, tax_unit):
     # Tuple of net income for separate and married.
@@ -65,20 +66,31 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     situation["households"] = {
         "your household": {"members": members, "state_name": {YEAR: state_code}}
     }
-  
     simulation = Simulation(situation=situation)
 
-    simulation = Simulation(situation=situation)
-    household_net_income = int(simulation.calculate("household_net_income", int(YEAR))[0])
-    household_benefits = int(simulation.calculate("household_benefits", int(YEAR))[0])
-    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", int(YEAR))[0])
-    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", int(YEAR))[0])
+    #benefits breakdown
+    benefits_categories = HouseholdBenefits.adds
+
+    household_net_income = int(simulation.calculate("household_net_income", YEAR))
+    household_benefits = int(simulation.calculate("household_benefits", YEAR))
+    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", int(YEAR)))
+    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", int(YEAR)))
+    
+    benefits_dic ={}
+    for benefit in benefits_categories:
+        try:
+            benefit_amount = int(simulation.calculate(benefit, YEAR)[0])
+        except ValueError:
+            benefit_amount = 0
+            
+        benefits_dic[benefit]=benefit_amount
+
+    return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits, benefits_dic]
    
+def get_categorized_programs(state_code, head_employment_income, spouse_employment_income, children_ages):
+     programs_married = get_programs(state_code, head_employment_income, spouse_employment_income, children_ages)
+     programs_head = get_programs(state_code, head_employment_income, None, children_ages)
 
-    return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits]
-def get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages):
-     programs_married = get_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
-     programs_head = get_programs(state_code, head_employment_income, None,  children_ages)
      programs_spouse = get_programs(state_code, spouse_employment_income,None, children_ages)
      return [programs_married, programs_head, programs_spouse]
 
@@ -176,7 +188,7 @@ us_territories = {
 }
 options = [value for value in statecodes if value not in us_territories]
 state_code = st.selectbox("State Code", options)
-head_employment_income = st.number_input("Head Employment Income", step=20000, value=0)
+head_employment_income = st.number_input("Head Employment Income", step=10000, value=0)
 spouse_employment_income = st.number_input("Spouse Employment Income", step=10000, value=0)
 num_children = st.number_input("Number of Children", 0)
 children_ages = {}
@@ -195,13 +207,33 @@ submit = st.button("Calculate")
 
 if submit:  
     programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
-    married_programs = programs[0]
+    
+    # benefits breakdowns
+    benefits_categories = programs[0][-1].keys()
+    benefits_married = programs[0][-1].values()
+    benefits_head = programs[1][-1].values()
+    benefits_spouse = programs[2][-1].values()
+    benefits_separate = [x + y for x, y in zip(benefits_head, benefits_spouse)]
+    benefits_delta = [x - y for x, y in zip(benefits_married, benefits_separate)]
+    benefits_delta_percent = [(x - y) / x if x != 0 else 0 for x, y in zip(benefits_married, benefits_separate)]
+
+    # format benefits breakdowns
+    formatted_benefits_married = list(map(lambda x: "${:,}".format(round(x)), benefits_married))
+    formatted_benefits_separate = list(map(lambda x: "${:,}".format(round(x)), benefits_separate))
+    formatted_benefits_delta = list(map(lambda x: "${:,}".format(round(x)), benefits_delta))
+    formatted_benefits_delta_percent = list(map(lambda x: "{:.1%}".format(x), benefits_delta_percent))
+
+    # married programs
+    married_programs = programs[0][:-1] # we exclude the last element which is the dictionary of benefits breakdown 
     formatted_married_programs = list(map(lambda x: "${:,}".format(round(x)), married_programs))
-    head_separate = programs[1]
-    spouse_separate = programs[2]
+    
+    # separate programs
+    head_separate = programs[1][:-1] # we exclude the last element which is the dictionary of benefits breakdown 
+    spouse_separate = programs[2][:-1] # we exclude the last element which is the dictionary of benefits breakdown 
     separate = [x + y for x, y in zip(head_separate, spouse_separate)]
     formatted_separate = list(map(lambda x: "${:,}".format(round(x)), separate))
-    head_separate = programs[1]
+    
+    # delta
     delta = [x - y for x, y in zip(married_programs, separate)]
     delta_percent = [(x - y) / x if y != 0 and x != 0 else 0 for x, y in zip(married_programs, separate)]
 
@@ -209,6 +241,7 @@ if submit:
     formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
 
     programs = ["Net Income", "Benefits", "Refundable tax credits", "Taxes before refundable credits"]
+
 
     # Determine marriage penalty or bonus, and extent in dollars and percentage.
     marriage_bonus = married_programs[0] - separate[0]
@@ -230,7 +263,9 @@ if submit:
         st.write("You face no marriage penalty or bonus.")
 
     st.write(summarize_marriage_bonus(marriage_bonus))
-    # Sample data
+
+    # Formatting for visual display
+    # Sample data for main table
     table_data = {
         'Program': programs,
         'Not Married': formatted_separate,
@@ -239,11 +274,40 @@ if submit:
         'Delta Percentage': formatted_delta_percent
     }
 
-    # Display the table in Streamlit
-    st.dataframe(table_data, hide_index=True)
+    # Benefits breakdown table
+    benefits_table = {
+        'Program': benefits_categories,
+        'Not Married': formatted_benefits_separate,
+        'Married': formatted_benefits_married,
+        'Delta': formatted_benefits_delta,
+        'Delta Percentage': formatted_benefits_delta_percent
+        
+    }
+    # filter benefits to keep only the non-zero values
+    benefits_df = pd.DataFrame(benefits_table)
+    filtered_benefits_df = benefits_df[(benefits_df['Not Married'] != "$0") | (benefits_df['Married'] != "$0")]
+    
+    # Display the tables in Streamlit
+    if not filtered_benefits_df.empty: # if we have benefits
+        tab1, tab2 = st.tabs(["Summary", "Benefits Breakdown"])
+        with tab1:
+            st.dataframe(table_data, hide_index=True)
 
-def get_chart(data, heatmap_tax_unit):
+        with tab2:
+            st.dataframe(filtered_benefits_df, hide_index=True)
 
+    else: # if we don't have benefits, display just the main table
+        st.dataframe(table_data, hide_index=True)
+    
+    def calculate_bonus():
+        married_incomes , separate_incomes = get_net_incomes(state_code, children_ages)
+        bonus_penalties = [x - y for x, y in zip(married_incomes.tolist(), separate_incomes.tolist())]
+        array = np.array(bonus_penalties)
+        nested_lists = np.reshape(array, (8, 8))
+        return nested_lists
+
+        
+    def get_chart():
     # Function to calculate the input data (replace with your actual data calculation)
         # Set numerical values for x and y axes
         x_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
