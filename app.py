@@ -89,11 +89,10 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits, benefits_dic]
    
 def get_categorized_programs(state_code, head_employment_income, spouse_employment_income, children_ages):
-     programs_married = get_programs(state_code, head_employment_income, spouse_employment_income, children_ages)
-     programs_head = get_programs(state_code, head_employment_income, None, children_ages)
-
-     programs_spouse = get_programs(state_code, spouse_employment_income,None, children_ages)
-     return [programs_married, programs_head, programs_spouse]
+    programs_married = get_programs(state_code, head_employment_income, spouse_employment_income, children_ages)
+    programs_head = get_programs(state_code, head_employment_income, None, children_ages)
+    programs_spouse = get_programs(state_code, spouse_employment_income, None, {})  # Pass an empty dictionary for children_ages
+    return [programs_married, programs_head, programs_spouse]
 
 # Create a function to get net income for household
 def get_marital_values(state_code, spouse, children_ages, tax_unit):
@@ -377,11 +376,22 @@ def heapmap_calculation(state_code, children_ages_hash, children_ages):
     final_lists = {}
   
     for key, _ in HEAT_MAP_OUTPUTS.items():
-        married_incomes , separate_incomes = get_heatmap_values(state_code, children_ages, key)
-        married_list = married_incomes.tolist()
-        nested_list_married = [married_list[i:i+8] for i in range(0, len(married_list), 8)]
-        bonus_penalties =[[y - x for x, y in zip(sublist2, sublist1)] for sublist1, sublist2 in zip(nested_list_married, separate_incomes)]
-        final_lists[key] = bonus_penalties
+        married_incomes, separate_incomes = get_heatmap_values(state_code, children_ages, key)
+        
+        if isinstance(married_incomes, list):
+            married_incomes_array = np.array(married_incomes)
+        else:
+            married_incomes_array = married_incomes
+        
+        if isinstance(separate_incomes[0], list):
+            separate_incomes_array = np.array(separate_incomes)
+        else:
+            separate_incomes_array = separate_incomes
+        
+        married_incomes_2d = married_incomes_array.reshape(8, 8)
+        bonus_penalties = married_incomes_2d - separate_incomes_array
+        final_lists[key] = bonus_penalties.tolist()
+
     return final_lists
 
 children_ages_hash = hashlib.md5(str(children_ages).encode()).hexdigest()
