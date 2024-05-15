@@ -133,6 +133,7 @@ def get_marital_values(state_code, spouse, children_ages, tax_unit):
                 "count": 9,
                 "index": 0,
                 "min": 0,
+
                 "max": 80000,
                 "period": YEAR
             }
@@ -153,6 +154,7 @@ def get_marital_values(state_code, spouse, children_ages, tax_unit):
             [
             {
                 "name": HEAT_MAP_OUTPUTS[tax_unit][1],
+
                 "count": 9,
                 "min": 0,
                 "max": 80000,
@@ -293,6 +295,7 @@ if submit:
         with tab1:
             st.dataframe(table_data, hide_index=True)
 
+
         with tab2:
             st.dataframe(filtered_benefits_df, hide_index=True)
 
@@ -304,6 +307,7 @@ if submit:
         bonus_penalties = [x - y for x, y in zip(married_incomes.tolist(), separate_incomes.tolist())]
         array = np.array(bonus_penalties)
         nested_lists = np.reshape(array, (9, 9))
+
         return nested_lists
 
         
@@ -312,6 +316,7 @@ def get_chart(data, heatmap_tax_unit):
         # Set numerical values for x and y axes
         x_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
         y_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+
 
         label_legend = {
             "Income": "Income Change",
@@ -362,6 +367,8 @@ def get_chart(data, heatmap_tax_unit):
                 scaleratio=1,
             )
         )
+
+ 
         fig.update_layout(height=600, width=800)
         # Add header
         st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
@@ -385,8 +392,8 @@ def heapmap_calculation(state_code, children_ages_hash, children_ages):
             separate_incomes_array = np.array(separate_incomes)
         else:
             separate_incomes_array = separate_incomes
-        
         married_incomes_2d = married_incomes_array.reshape(9, 9)
+
         bonus_penalties = married_incomes_2d - separate_incomes_array
         final_lists[key] = bonus_penalties.tolist()
 
@@ -405,7 +412,8 @@ else:
         st.session_state.children_ages_hash = children_ages_hash
 
 
-
+selected_heatmap_values = data[heatmap_tax_unit]
+get_chart(selected_heatmap_values, heatmap_tax_unit)
 
 selected_heatmap_values = data[heatmap_tax_unit]
 get_chart(selected_heatmap_values, heatmap_tax_unit)
