@@ -362,8 +362,6 @@ def get_chart(data, heatmap_tax_unit):
                 scaleratio=1,
             )
         )
-
- 
         fig.update_layout(height=600, width=800)
         # Add header
         st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
