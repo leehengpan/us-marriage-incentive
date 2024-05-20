@@ -130,9 +130,10 @@ def get_marital_values(state_code, spouse, children_ages, tax_unit):
             [
             {
                 "name": HEAT_MAP_OUTPUTS[tax_unit][1],
-                "count": 8,
+                "count": 9,
                 "index": 0,
-                "min": 10000,
+                "min": 0,
+
                 "max": 80000,
                 "period": YEAR
             }
@@ -140,9 +141,9 @@ def get_marital_values(state_code, spouse, children_ages, tax_unit):
             [
             {
                 "name": HEAT_MAP_OUTPUTS[tax_unit][1],
-                "count": 8,
+                "count": 9,
                 "index": 1,
-                "min": 10000,
+                "min": 0,
                 "max": 80000,
                 "period": YEAR
             }
@@ -153,8 +154,9 @@ def get_marital_values(state_code, spouse, children_ages, tax_unit):
             [
             {
                 "name": HEAT_MAP_OUTPUTS[tax_unit][1],
-                "count": 8,
-                "min": 10000,
+
+                "count": 9,
+                "min": 0,
                 "max": 80000,
                 "period": YEAR
             }
@@ -293,6 +295,7 @@ if submit:
         with tab1:
             st.dataframe(table_data, hide_index=True)
 
+
         with tab2:
             st.dataframe(filtered_benefits_df, hide_index=True)
 
@@ -300,18 +303,20 @@ if submit:
         st.dataframe(table_data, hide_index=True)
     
     def calculate_bonus():
-        married_incomes , separate_incomes = get_net_incomes(state_code, children_ages)
+        married_incomes , separate_incomes =  get_heatmap_values(state_code, children_ages)
         bonus_penalties = [x - y for x, y in zip(married_incomes.tolist(), separate_incomes.tolist())]
         array = np.array(bonus_penalties)
-        nested_lists = np.reshape(array, (8, 8))
+        nested_lists = np.reshape(array, (9, 9))
+
         return nested_lists
 
         
 def get_chart(data, heatmap_tax_unit):
     # Function to calculate the input data (replace with your actual data calculation)
         # Set numerical values for x and y axes
-        x_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
-        y_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+        x_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+        y_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+
 
         label_legend = {
             "Income": "Income Change",
@@ -345,16 +350,16 @@ def get_chart(data, heatmap_tax_unit):
         fig.update_layout(
             xaxis=dict(
                 tickmode='array',
-                tickvals=[10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
-                ticktext=["{}k".format(int(val/1000)) for val in [10000,20000, 30000,40000,50000, 60000, 70000, 80000]],
+                tickvals=[0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
+                ticktext=["{}k".format(int(val/1000)) for val in [0, 10000,20000, 30000,40000,50000, 60000, 70000, 80000]],
                 showgrid=True,
                 zeroline=False,
                 title=dict(text='Head Employment Income', standoff=15),
             ),
             yaxis=dict(
                 tickmode='array',
-                tickvals=[10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
-                ticktext=["{}k".format(int(val/1000)) for val in [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]],
+                tickvals=[0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
+                ticktext=["{}k".format(int(val/1000)) for val in [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]],
                 showgrid=True,
                 zeroline=False,
                 title=dict(text='Spouse Employment Income', standoff=15),
@@ -387,8 +392,8 @@ def heapmap_calculation(state_code, children_ages_hash, children_ages):
             separate_incomes_array = np.array(separate_incomes)
         else:
             separate_incomes_array = separate_incomes
-        
-        married_incomes_2d = married_incomes_array.reshape(8, 8)
+        married_incomes_2d = married_incomes_array.reshape(9, 9)
+
         bonus_penalties = married_incomes_2d - separate_incomes_array
         final_lists[key] = bonus_penalties.tolist()
 
@@ -407,8 +412,8 @@ else:
         st.session_state.children_ages_hash = children_ages_hash
 
 
-
-
 selected_heatmap_values = data[heatmap_tax_unit]
 get_chart(selected_heatmap_values, heatmap_tax_unit)
 
+selected_heatmap_values = data[heatmap_tax_unit]
+get_chart(selected_heatmap_values, heatmap_tax_unit)
