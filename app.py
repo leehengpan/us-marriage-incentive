@@ -325,7 +325,6 @@ def get_chart(data, heatmap_tax_unit):
         "Taxes": "Tax Change %",
         "Credits": "Credit Change %"
     }
-    print(data)
     abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
     z_min = -abs_max
     z_max = abs_max
