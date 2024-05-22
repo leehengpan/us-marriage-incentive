@@ -397,11 +397,88 @@ def heapmap_calculation(state_code, children_ages_hash, children_ages):
     for key, _ in HEAT_MAP_OUTPUTS.items():
         married_incomes, separate_incomes = get_heatmap_values(state_code, children_ages, key)
         
+
         if isinstance(married_incomes, list):
             married_incomes_array = np.array(married_incomes)
         else:
             married_incomes_array = married_incomes
         
+def get_chart(data, heatmap_tax_unit):
+    # Function to calculate the input data (replace with your actual data calculation)
+        # Set numerical values for x and y axes
+        x_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+        y_values = [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+
+        label_legend = {
+            "Income": "Income Change",
+            "Benefits": "Benefits Change",
+            "Taxes": "Tax Change",
+            "Credits": "Credit Change"
+        }
+
+        abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
+        z_min = -abs_max
+        z_max = abs_max
+        color_scale = [
+                (0, '#616161'), 
+                (0.5, '#FFFFFF'),  
+                (1, '#2C6496')  
+                ]
+        # Display the chart once data calculation is complete
+        fig = px.imshow(data,
+
+                        labels=dict(x="Head Employment Income", y="Spouse Employment Income", color= label_legend[heatmap_tax_unit]),
+
+                        x=x_values,
+                        y=y_values,
+                        zmin=z_min,
+                        zmax=z_max,
+                        color_continuous_scale=color_scale,
+                        origin='lower'
+                    )
+
+        fig.update_xaxes(side="bottom")
+        fig.update_layout(
+            xaxis=dict(
+                tickmode='array',
+                tickvals=[10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
+                ticktext=["{}k".format(int(val/1000)) for val in [10000,20000, 30000,40000,50000, 60000, 70000, 80000]],
+                showgrid=True,
+                zeroline=False,
+                title=dict(text='Head Employment Income', standoff=15),
+            ),
+            yaxis=dict(
+                tickmode='array',
+                tickvals=[10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
+                ticktext=["{}k".format(int(val/1000)) for val in [10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]],
+                showgrid=True,
+                zeroline=False,
+                title=dict(text='Spouse Employment Income', standoff=15),
+                scaleanchor="x",
+                scaleratio=1,
+            )
+        )
+
+ 
+        fig.update_layout(height=600, width=800)
+        # Add header
+        st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
+        fig = format_fig(fig)
+        # Display the chart
+        
+        st.plotly_chart(fig, use_container_width=True)
+@st.cache_data(hash_funcs={dict: lambda _: None})
+def heapmap_calculation(state_code, children_ages_hash, children_ages):
+    final_lists = {}
+  
+    for key, _ in HEAT_MAP_OUTPUTS.items():
+        married_incomes, separate_incomes = get_heatmap_values(state_code, children_ages, key)
+        
+        if isinstance(married_incomes, list):
+            married_incomes_array = np.array(married_incomes)
+        else:
+            married_incomes_array = married_incomes
+
         if isinstance(separate_incomes[0], list):
             separate_incomes_array = np.array(separate_incomes)
         else:
@@ -420,6 +497,7 @@ def heapmap_calculation(state_code, children_ages_hash, children_ages):
             bonus_penalties.append(row_bonus_penalties)
         
         final_lists[key] = bonus_penalties
+
     return final_lists
 
 children_ages_hash = hashlib.md5(str(children_ages).encode()).hexdigest()
@@ -435,7 +513,8 @@ else:
         st.session_state.children_ages_hash = children_ages_hash
 
 
-
+selected_heatmap_values = data[heatmap_tax_unit]
+get_chart(selected_heatmap_values, heatmap_tax_unit)
 
 selected_heatmap_values = data[heatmap_tax_unit]
 get_chart(selected_heatmap_values, heatmap_tax_unit)
