@@ -320,18 +320,20 @@ def get_chart(data, heatmap_tax_unit):
         "Taxes": "Tax Change %",
         "Credits": "Credit Change %"
     }
-
+    print(data)
     abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
     z_min = -abs_max
     z_max = abs_max
     color_scale = [
-        (0, '#616161'),
-        (0.5, '#FFFFFF'),
-        (1, '#2C6496')
+        (i/49, f'rgb({int(97 + (255 - 97) * i / 24)}, {int(97 + (255 - 97) * i / 24)}, {int(97 + (255 - 97) * i / 24)})')
+        if i <= 24 else
+        (i/49, f'rgb({int(255 + (44 - 255) * (i - 24) / 25)}, {int(255 + (100 - 255) * (i - 24) / 25)}, {int(255 + (150 - 255) * (i - 24) / 25)})')
+        for i in range(50)
     ]
     
     data_percentage = np.array(data) * 100
-
+    
+    
     # Display the chart once data calculation is complete
     fig = px.imshow(data_percentage,
                     labels=dict(x="Head Employment Income", y="Spouse Employment Income", color=label_legend[heatmap_tax_unit]),
@@ -373,6 +375,16 @@ def get_chart(data, heatmap_tax_unit):
     # Customize hover template to display x and y values along with the percentage change
     fig.update_traces(hovertemplate='Head Employment Income: %{x}<br>Spouse Employment Income: %{y}<br>Change: %{customdata:.2f}%')
 
+    # Add a color bar legend
+    fig.update_layout(coloraxis_colorbar=dict(
+        title=label_legend[heatmap_tax_unit],
+        tickvals=[z_min, 0, z_max],
+        ticktext=['-100%', '0%', '100%'],
+        lenmode="pixels", len=300,
+        yanchor="top", y=1, ypad=10,
+        xanchor="right", x=1.1, xpad=10
+    ))
+    
     # Add header
     st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
     
@@ -402,6 +414,7 @@ def heapmap_calculation(state_code, children_ages_hash, children_ages):
             for x, y in zip(row, col):
                 if x != 0:  # Avoid division by zero
                     row_bonus_penalties.append((x - y) / x)
+                    #print((x - y) / x)
                 else:
                     row_bonus_penalties.append(0)  # Handle zero division
             bonus_penalties.append(row_bonus_penalties)
