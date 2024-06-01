@@ -209,6 +209,18 @@ def summarize_marriage_bonus(marriage_bonus, marriage_bonus_percent):
 def format_program_name(name):
     return name.replace('_', ' ').title()
 
+def calculate_deltas(married, separate):
+    delta = [x - y for x, y in zip(married, separate)]
+    delta_percent = [(x - y) / y if y != 0 else 0 for x, y in zip(married, separate)]
+
+    formatted_married = list(map(lambda x: "${:,}".format(round(x)), married))
+    formatted_separate = list(map(lambda x: "${:,}".format(round(x)), separate))
+    formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
+    formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
+
+    return formatted_married, formatted_separate, formatted_delta, formatted_delta_percent
+
+
 
 if submit:
     package = "policyengine_us"
@@ -226,54 +238,17 @@ if submit:
         state_code, head_employment_income, spouse_employment_income, children_ages
     )
 
-    benefits_categories = list(programs[0][-2].keys())
-    benefits_married = list(programs[0][-2].values())
-    benefits_head = list(programs[1][-2].values())
-    benefits_spouse = list(programs[2][-2].values())
-    benefits_separate = [x + y for x, y in zip(benefits_head, benefits_spouse)]
-    benefits_delta = [x - y for x, y in zip(benefits_married, benefits_separate)]
-    benefits_delta_percent = [
-        (x - y) / y if y != 0 else 0
-        for x, y in zip(benefits_married, benefits_separate)
-    ]
-
-    formatted_benefits_married = list(
-        map(lambda x: "${:,}".format(round(x)), benefits_married)
-    )
-    formatted_benefits_separate = list(
-        map(lambda x: "${:,}".format(round(x)), benefits_separate)
-    )
-    formatted_benefits_delta = list(
-        map(lambda x: "${:,}".format(round(x)), benefits_delta)
-    )
-    formatted_benefits_delta_percent = list(
-        map(lambda x: "{:.1%}".format(x), benefits_delta_percent)
+if submit:
+    programs = get_categorized_programs(
+        state_code, head_employment_income, spouse_employment_income, children_ages
     )
 
     married_programs = programs[0][:-3]
-    formatted_married_programs = [
-        "${:,}".format(round(x)) if isinstance(x, (int, float)) else x
-        for x in married_programs
-    ]
-
     head_separate = programs[1][:-3]
     spouse_separate = programs[2][:-3]
     separate = [x + y for x, y in zip(head_separate, spouse_separate)]
-    formatted_separate = [
-        "${:,}".format(round(x)) if isinstance(x, (int, float)) else x for x in separate
-    ]
 
-    delta = [x - y for x, y in zip(married_programs, separate)]
-    delta_percent = [
-        (x - y) / y if y != 0 else 0 for x, y in zip(married_programs, separate)
-    ]
-
-    formatted_delta = [
-        "${:,}".format(round(x)) if isinstance(x, (int, float)) else x for x in delta
-    ]
-    formatted_delta_percent = [
-        "{:.1%}".format(x) if isinstance(x, (int, float)) else x for x in delta_percent
-    ]
+    formatted_married_programs, formatted_separate, formatted_delta, formatted_delta_percent = calculate_deltas(married_programs, separate)
 
     programs_list = [
         "Net income",
@@ -281,18 +256,6 @@ if submit:
         "Refundable tax credits",
         "Taxes before refundable credits",
     ]
-
-    marriage_bonus = married_programs[0] - separate[0]
-    marriage_bonus_percent = (separate[0] - married_programs[0]) / separate[0] if separate[0] != 0 else 0
-
-    if marriage_bonus > 0:
-        st.write("You face a marriage BONUS.")
-    elif marriage_bonus < 0:
-        st.write("You face a marriage PENALTY.")
-    else:
-        st.write("You face no marriage penalty or bonus.")
-
-    st.write(summarize_marriage_bonus(marriage_bonus, marriage_bonus_percent))
 
     table_data = {
         "Program": programs_list,
@@ -304,7 +267,18 @@ if submit:
 
     table_df = pd.DataFrame(table_data)
 
-    # Filter out benefits with zero values
+
+
+    benefits_categories = list(programs[0][-2].keys())
+    benefits_married = list(programs[0][-2].values())
+    benefits_head = list(programs[1][-2].values())
+    benefits_spouse = list(programs[2][-2].values())
+    benefits_separate = [x + y for x, y in zip(benefits_head, benefits_spouse)]
+
+    formatted_benefits_married, formatted_benefits_separate, formatted_benefits_delta, formatted_benefits_delta_percent = calculate_deltas(benefits_married, benefits_separate)
+
+    # Benefits Table 
+
     benefits_table = {
         "Program": [],
         "Not Married": [],
@@ -319,11 +293,12 @@ if submit:
             benefits_table["Not Married"].append(formatted_benefits_separate[i])
             benefits_table["Married"].append(formatted_benefits_married[i])
             benefits_table["Delta"].append(formatted_benefits_delta[i])
-            benefits_table["Delta Percentage"].append(
-                formatted_benefits_delta_percent[i]
-            )
+            benefits_table["Delta Percentage"].append(formatted_benefits_delta_percent[i])
 
     benefits_df = pd.DataFrame(benefits_table)
+
+    # The Credits before refudnable credits Table 
+
 
     credits_table = {
         "Program": [],
@@ -338,24 +313,16 @@ if submit:
     credits_head = list(programs[1][-1].values())
     credits_spouse = list(programs[2][-1].values())
     credits_separate = [x + y for x, y in zip(credits_head, credits_spouse)]
-    credits_delta = [x - y for x, y in zip(credits_married, credits_separate)]
-    credits_delta_percent = [
-        (x - y) / y if y != 0 else 0
-        for x, y in zip(credits_married, credits_separate)
-    ]
 
-    formatted_credits_married = list(
-        map(lambda x: "${:,}".format(round(x)), credits_married)
-    )
-    formatted_credits_separate = list(
-        map(lambda x: "${:,}".format(round(x)), credits_separate)
-    )
-    formatted_credits_delta = list(
-        map(lambda x: "${:,}".format(round(x)), credits_delta)
-    )
-    formatted_credits_delta_percent = list(
-        map(lambda x: "{:.1%}".format(x), credits_delta_percent)
-    )
+    formatted_credits_married, formatted_credits_separate, formatted_credits_delta, formatted_credits_delta_percent = calculate_deltas(credits_married, credits_separate)
+
+    credits_table = {
+        "Program": [],
+        "Not Married": [],
+        "Married": [],
+        "Delta": [],
+        "Delta Percentage": [],
+    }
 
     for i, credits in enumerate(refundable_credits):
         if credits_married[i] != 0 or credits_separate[i] != 0:
@@ -363,11 +330,17 @@ if submit:
             credits_table["Not Married"].append(formatted_credits_separate[i])
             credits_table["Married"].append(formatted_credits_married[i])
             credits_table["Delta"].append(formatted_credits_delta[i])
-            credits_table["Delta Percentage"].append(
-                formatted_credits_delta_percent[i]
-            )
+            credits_table["Delta Percentage"].append(formatted_credits_delta_percent[i])
 
     refundable_credits_df = pd.DataFrame(credits_table)
+
+    taxes_before_refundable_credits = list(programs[0][-3].keys())
+    taxes_married = list(programs[0][-3].values())
+    taxes_head = list(programs[1][-3].values())
+    taxes_spouse = list(programs[2][-3].values())
+    taxes_separate = [x + y for x, y in zip(taxes_head, taxes_spouse)]
+
+    formatted_taxes_married, formatted_taxes_separate, formatted_taxes_delta, formatted_taxes_delta_percent = calculate_deltas(taxes_married, taxes_separate)
 
     taxes_table = {
         "Program": [],
@@ -377,39 +350,14 @@ if submit:
         "Delta Percentage": [],
     }
 
-    taxes_before_refundable_credits = list(programs[0][-3].keys())
-    taxes_married = list(programs[0][-3].values())
-    taxes_head = list(programs[1][-3].values())
-    taxes_spouse = list(programs[2][-3].values())
-    taxes_separate = [x + y for x, y in zip(taxes_head, taxes_spouse)]
-    taxes_delta = [x - y for x, y in zip(taxes_married, taxes_separate)]
-    taxes_delta_percent = [
-        (x - y) / y if y != 0 else 0
-        for x, y in zip(taxes_married, taxes_separate)
-    ]
-
-    formatted_taxes_married = list(
-        map(lambda x: "${:,}".format(round(x)), taxes_married)
-    )
-    formatted_taxes_separate = list(
-        map(lambda x: "${:,}".format(round(x)), taxes_separate)
-    )
-    formatted_taxes_delta = list(
-        map(lambda x: "${:,}".format(round(x)), taxes_delta)
-    )
-    formatted_taxes_delta_percent = list(
-        map(lambda x: "{:.1%}".format(x), taxes_delta_percent)
-    )
     for i, taxes in enumerate(taxes_before_refundable_credits):
         if taxes_married[i] != 0 or taxes_separate[i] != 0:
             taxes_table["Program"].append(format_program_name(taxes))
             taxes_table["Not Married"].append(formatted_taxes_separate[i])
             taxes_table["Married"].append(formatted_taxes_married[i])
             taxes_table["Delta"].append(formatted_taxes_delta[i])
-            taxes_table["Delta Percentage"].append(
-                formatted_taxes_delta_percent[i]
-            )
-    
+            taxes_table["Delta Percentage"].append(formatted_taxes_delta_percent[i])
+
     taxes_df = pd.DataFrame(taxes_table)
 
 
