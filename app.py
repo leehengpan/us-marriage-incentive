@@ -6,7 +6,9 @@ from policyengine_us.variables.household.demographic.geographic.state_code impor
 from policyengine_us.variables.household.income.household.household_benefits import (
     household_benefits as HouseholdBenefits,
 )
-from policyengine_us.variables.household.income.household.household_tax_before_refundable_credits import (household_tax_before_refundable_credits as HouseholdTaxBeforeRefundableCredits,)
+from policyengine_us.variables.household.income.household.household_tax_before_refundable_credits import (
+    household_tax_before_refundable_credits as HouseholdTaxBeforeRefundableCredits,
+)
 
 import pandas as pd
 
@@ -19,8 +21,8 @@ def load_credits_from_yaml(package, resource_path):
     yaml_file = pkg_resources.resource_stream(package, resource_path)
     data = yaml.safe_load(yaml_file)
     # Find the newest available year
-    newest_year = max(data['values'].keys())
-    credits = data['values'].get(newest_year, [])
+    newest_year = max(data["values"].keys())
+    credits = data["values"].get(newest_year, [])
 
     return credits
 
@@ -34,7 +36,9 @@ st.header("Marriage Incentive Calculator")
 st.write(
     "This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income"
 )
-st.markdown("This application utilizes the [`policyengine-us` Python package](https://github.com/policyengine/policyengine-us).",)
+st.markdown(
+    "This application utilizes the [`policyengine-us` Python package](https://github.com/policyengine/policyengine-us).",
+)
 
 # Streamlit inputs for state code, head income, and spouse income.
 statecodes = [s.value for s in StateCode]
@@ -123,7 +127,9 @@ def get_programs(
 
     package = "policyengine_us"
     resource_path_federal = "parameters/gov/irs/credits/refundable.yaml"
-    resource_path_state = f"parameters/gov/states/{state_code.lower()}/tax/income/credits/refundable.yaml"
+    resource_path_state = (
+        f"parameters/gov/states/{state_code.lower()}/tax/income/credits/refundable.yaml"
+    )
 
     # Load refundable credits for both paths
     refundable_credits_federal = load_credits_from_yaml(package, resource_path_federal)
@@ -143,23 +149,17 @@ def get_programs(
 
     benefits_dict = {}
     for benefit in benefits_categories:
-        benefit_amount = int(
-            simulation.calculate(benefit, YEAR, map_to="household")[0]
-        )
+        benefit_amount = int(simulation.calculate(benefit, YEAR, map_to="household")[0])
         benefits_dict[benefit] = benefit_amount
 
     credits_dic = {}
     for credit in refundable_credits:
-        credit_amount = int(
-            simulation.calculate(credit, YEAR, map_to="household")[0]
-        )
+        credit_amount = int(simulation.calculate(credit, YEAR, map_to="household")[0])
         credits_dic[credit] = credit_amount
 
     taxes_before_refundable_credits_dic = {}
     for tax in taxes_before_refundable_credits:
-        tax_amount = int(
-            simulation.calculate(tax, YEAR, map_to="household")[0]
-        )
+        tax_amount = int(simulation.calculate(tax, YEAR, map_to="household")[0])
         taxes_before_refundable_credits_dic[tax] = tax_amount
 
     return [
@@ -207,7 +207,8 @@ def summarize_marriage_bonus(marriage_bonus, marriage_bonus_percent):
 
 
 def format_program_name(name):
-    return name.replace('_', ' ').title()
+    return name.replace("_", " ").title()
+
 
 def calculate_deltas(married, separate):
     delta = [x - y for x, y in zip(married, separate)]
@@ -218,150 +219,120 @@ def calculate_deltas(married, separate):
     formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
     formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
 
-    return formatted_married, formatted_separate, formatted_delta, formatted_delta_percent
+    return (
+        formatted_married,
+        formatted_separate,
+        formatted_delta,
+        formatted_delta_percent,
+    )
 
+
+def create_table_data(categories, married_values, separate_values, tab_name):
+    formatted_married, formatted_separate, formatted_delta, formatted_delta_percent = (
+        calculate_deltas(married_values, separate_values)
+    )
+
+    table_data = {
+        "Program": [format_program_name(cat) for cat in categories],
+        "Not Married": formatted_separate,
+        "Married": formatted_married,
+        "Delta": formatted_delta,
+        "Delta Percentage": formatted_delta_percent,
+        "Tab": [tab_name] * len(categories),
+    }
+
+    df = pd.DataFrame(table_data)
+    # Filter out rows where both "Married" and "Not Married" values are 0
+    df = df[(df["Married"] != "$0") | (df["Not Married"] != "$0")]
+    return df
 
 
 if submit:
-    package = "policyengine_us"
-    resource_path_federal = "parameters/gov/irs/credits/refundable.yaml"
-    resource_path_state = f"parameters/gov/states/{state_code.lower()}/tax/income/credits/refundable.yaml"
-
-    # Load refundable credits for both paths
-    refundable_credits_federal = load_credits_from_yaml(package, resource_path_federal)
-    refundable_credits_state = load_credits_from_yaml(package, resource_path_state)
-
-    # Ensure refundable_credits is the same shape as refundable_credits_federal
-    refundable_credits = refundable_credits_federal + refundable_credits_state
-
     programs = get_categorized_programs(
         state_code, head_employment_income, spouse_employment_income, children_ages
     )
 
-    married_programs = programs[0][:-3]
-    head_separate = programs[1][:-3]
-    spouse_separate = programs[2][:-3]
-    separate = [x + y for x, y in zip(head_separate, spouse_separate)]
-
-    formatted_married_programs, formatted_separate, formatted_delta, formatted_delta_percent = calculate_deltas(married_programs, separate)
-
+    # Total Programs Data
     programs_list = [
         "Net income",
         "Benefits",
         "Refundable tax credits",
         "Taxes before refundable credits",
     ]
+    married_programs = programs[0][:-3]
+    head_separate = programs[1][:-3]
+    spouse_separate = programs[2][:-3]
+    separate = [x + y for x, y in zip(head_separate, spouse_separate)]
 
-    table_data = {
-        "Program": programs_list,
-        "Not Married": formatted_separate,
-        "Married": formatted_married_programs,
-        "Delta": formatted_delta,
-        "Delta Percentage": formatted_delta_percent,
-    }
+    total_data = create_table_data(programs_list, married_programs, separate, "Summary")
 
-    table_df = pd.DataFrame(table_data)
-
-
-
+    # Benefits Data
     benefits_categories = list(programs[0][-2].keys())
     benefits_married = list(programs[0][-2].values())
     benefits_head = list(programs[1][-2].values())
     benefits_spouse = list(programs[2][-2].values())
     benefits_separate = [x + y for x, y in zip(benefits_head, benefits_spouse)]
 
-    formatted_benefits_married, formatted_benefits_separate, formatted_benefits_delta, formatted_benefits_delta_percent = calculate_deltas(benefits_married, benefits_separate)
+    benefits_data = create_table_data(
+        benefits_categories, benefits_married, benefits_separate, "Benefits Breakdown"
+    )
 
-    # Benefits Table 
-
-    benefits_table = {
-        "Program": [],
-        "Not Married": [],
-        "Married": [],
-        "Delta": [],
-        "Delta Percentage": [],
-    }
-
-    for i, benefit in enumerate(benefits_categories):
-        if benefits_married[i] != 0 or benefits_separate[i] != 0:
-            benefits_table["Program"].append(format_program_name(benefit))
-            benefits_table["Not Married"].append(formatted_benefits_separate[i])
-            benefits_table["Married"].append(formatted_benefits_married[i])
-            benefits_table["Delta"].append(formatted_benefits_delta[i])
-            benefits_table["Delta Percentage"].append(formatted_benefits_delta_percent[i])
-
-    benefits_df = pd.DataFrame(benefits_table)
-
-    # The Credits before refudnable credits Table 
-
-
-    credits_table = {
-        "Program": [],
-        "Not Married": [],
-        "Married": [],
-        "Delta": [],
-        "Delta Percentage": [],
-    }
-
+    # Refundable Credits Data
     credits_categories = list(programs[0][-1].keys())
     credits_married = list(programs[0][-1].values())
     credits_head = list(programs[1][-1].values())
     credits_spouse = list(programs[2][-1].values())
     credits_separate = [x + y for x, y in zip(credits_head, credits_spouse)]
 
-    formatted_credits_married, formatted_credits_separate, formatted_credits_delta, formatted_credits_delta_percent = calculate_deltas(credits_married, credits_separate)
+    credits_data = create_table_data(
+        credits_categories, credits_married, credits_separate, "Refundable Credits"
+    )
 
-    credits_table = {
-        "Program": [],
-        "Not Married": [],
-        "Married": [],
-        "Delta": [],
-        "Delta Percentage": [],
-    }
-
-    for i, credits in enumerate(refundable_credits):
-        if credits_married[i] != 0 or credits_separate[i] != 0:
-            credits_table["Program"].append(format_program_name(credits))
-            credits_table["Not Married"].append(formatted_credits_separate[i])
-            credits_table["Married"].append(formatted_credits_married[i])
-            credits_table["Delta"].append(formatted_credits_delta[i])
-            credits_table["Delta Percentage"].append(formatted_credits_delta_percent[i])
-
-    refundable_credits_df = pd.DataFrame(credits_table)
-
-    taxes_before_refundable_credits = list(programs[0][-3].keys())
+    # Taxes Data
+    taxes_categories = list(programs[0][-3].keys())
     taxes_married = list(programs[0][-3].values())
     taxes_head = list(programs[1][-3].values())
     taxes_spouse = list(programs[2][-3].values())
     taxes_separate = [x + y for x, y in zip(taxes_head, taxes_spouse)]
 
-    formatted_taxes_married, formatted_taxes_separate, formatted_taxes_delta, formatted_taxes_delta_percent = calculate_deltas(taxes_married, taxes_separate)
+    taxes_data = create_table_data(
+        taxes_categories,
+        taxes_married,
+        taxes_separate,
+        "Taxes before Refundable Credits",
+    )
 
-    taxes_table = {
-        "Program": [],
-        "Not Married": [],
-        "Married": [],
-        "Delta": [],
-        "Delta Percentage": [],
-    }
+    # Combine all data into a single DataFrame
+    all_data = pd.concat([total_data, benefits_data, credits_data, taxes_data])
 
-    for i, taxes in enumerate(taxes_before_refundable_credits):
-        if taxes_married[i] != 0 or taxes_separate[i] != 0:
-            taxes_table["Program"].append(format_program_name(taxes))
-            taxes_table["Not Married"].append(formatted_taxes_separate[i])
-            taxes_table["Married"].append(formatted_taxes_married[i])
-            taxes_table["Delta"].append(formatted_taxes_delta[i])
-            taxes_table["Delta Percentage"].append(formatted_taxes_delta_percent[i])
-
-    taxes_df = pd.DataFrame(taxes_table)
-
-
-    tab1, tab2, tab3, tab4 = st.tabs(["Summary", "Benefits Breakdown", "Refundable Credits", "Taxes before Refundable Credits"])
+    # Filter data for each tab and display
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "Summary",
+            "Benefits Breakdown",
+            "Refundable Credits",
+            "Taxes before Refundable Credits",
+        ]
+    )
     with tab1:
-        st.dataframe(table_df, hide_index=True)
+        st.dataframe(
+            all_data[all_data["Tab"] == "Summary"].drop(columns=["Tab"]),
+            hide_index=True,
+        )
     with tab2:
-        st.dataframe(benefits_df, hide_index=True)
+        st.dataframe(
+            all_data[all_data["Tab"] == "Benefits Breakdown"].drop(columns=["Tab"]),
+            hide_index=True,
+        )
     with tab3:
-        st.dataframe(refundable_credits_df, hide_index=True)
+        st.dataframe(
+            all_data[all_data["Tab"] == "Refundable Credits"].drop(columns=["Tab"]),
+            hide_index=True,
+        )
     with tab4:
-        st.dataframe(taxes_df, hide_index=True)
+        st.dataframe(
+            all_data[all_data["Tab"] == "Taxes before Refundable Credits"].drop(
+                columns=["Tab"]
+            ),
+            hide_index=True,
+        )
