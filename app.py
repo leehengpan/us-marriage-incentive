@@ -34,14 +34,11 @@ st.header("Marriage Incentive Calculator")
 st.write(
     "This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income"
 )
-st.markdown(
-    "This application utilizes <a href='https://github.com/PolicyEngine/us-marriage-incentive'>the policyengine API</a>",
-    unsafe_allow_html=True,
-)
+st.markdown("This application utilizes the [`policyengine-us` Python package](https://github.com/policyengine/policyengine-us).",)
 
 # Streamlit inputs for state code, head income, and spouse income.
 statecodes = [s.value for s in StateCode]
-us_territories = {
+US_TERRITORIES = {
     "GU": "Guam",
     "MP": "Northern Mariana Islands",
     "PW": "Palau",
@@ -51,7 +48,7 @@ us_territories = {
     "AE": "Armed Forces Africa/Canada/Europe/Middle East",
     "AP": "Armed Forces Pacific",
 }
-options = [value for value in statecodes if value not in us_territories]
+options = [value for value in statecodes if value not in US_TERRITORIES]
 state_code = st.selectbox("State Code", options)
 head_employment_income = st.number_input(
     "Head Employment Income", min_value=0, step=10000, value=0
@@ -144,12 +141,12 @@ def get_programs(
         simulation.calculate("household_tax_before_refundable_credits", int(YEAR))
     )
 
-    benefits_dic = {}
+    benefits_dict = {}
     for benefit in benefits_categories:
         benefit_amount = int(
             simulation.calculate(benefit, YEAR, map_to="household")[0]
         )
-        benefits_dic[benefit] = benefit_amount
+        benefits_dict[benefit] = benefit_amount
 
     credits_dic = {}
     for credit in refundable_credits:
@@ -171,7 +168,7 @@ def get_programs(
         household_refundable_tax_credits,
         household_tax_before_refundable_credits,
         taxes_before_refundable_credits_dic,
-        benefits_dic,
+        benefits_dict,
         credits_dic,
     ]
 
@@ -279,7 +276,7 @@ if submit:
     ]
 
     programs_list = [
-        "Net Income",
+        "Net income",
         "Benefits",
         "Refundable tax credits",
         "Taxes before refundable credits",
