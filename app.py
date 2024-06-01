@@ -233,12 +233,7 @@ if submit:
 
     # Ensure refundable_credits is the same shape as refundable_credits_federal
     refundable_credits = refundable_credits_federal + refundable_credits_state
-    
-    programs = get_categorized_programs(
-        state_code, head_employment_income, spouse_employment_income, children_ages
-    )
 
-if submit:
     programs = get_categorized_programs(
         state_code, head_employment_income, spouse_employment_income, children_ages
     )
