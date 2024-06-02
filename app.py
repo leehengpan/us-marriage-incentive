@@ -227,7 +227,7 @@ def calculate_deltas(married, separate):
     )
 
 
-def create_table_data(categories, married_values, separate_values, tab_name):
+def create_table_data(categories, married_values, separate_values, tab_name, filter_zeros=True):
     formatted_married, formatted_separate, formatted_delta, formatted_delta_percent = (
         calculate_deltas(married_values, separate_values)
     )
@@ -242,10 +242,10 @@ def create_table_data(categories, married_values, separate_values, tab_name):
     }
 
     df = pd.DataFrame(table_data)
-    # Filter out rows where both "Married" and "Not Married" values are 0
-    df = df[(df["Married"] != "$0") | (df["Not Married"] != "$0")]
+    if filter_zeros:
+        # Filter out rows where both "Married" and "Not Married" values are 0
+        df = df[(df["Married"] != "$0") | (df["Not Married"] != "$0")]
     return df
-
 
 if submit:
     programs = get_categorized_programs(
@@ -264,7 +264,7 @@ if submit:
     spouse_separate = programs[2][:-3]
     separate = [x + y for x, y in zip(head_separate, spouse_separate)]
 
-    total_data = create_table_data(programs_list, married_programs, separate, "Summary")
+    total_data = create_table_data(programs_list, married_programs, separate, "Summary", filter_zeros=False)
 
     # Benefits Data
     benefits_categories = list(programs[0][-2].keys())
