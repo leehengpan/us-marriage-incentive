@@ -133,7 +133,9 @@ def get_programs(
 
     # Load refundable credits for both paths
     try:
-        refundable_credits_federal = load_credits_from_yaml(package, resource_path_federal)
+        refundable_credits_federal = load_credits_from_yaml(
+            package, resource_path_federal
+        )
     except FileNotFoundError:
         refundable_credits_federal = []
 
@@ -141,7 +143,7 @@ def get_programs(
         refundable_credits_state = load_credits_from_yaml(package, resource_path_state)
     except FileNotFoundError:
         refundable_credits_state = []
-    
+
     # Ensure refundable_credits is the same shape as refundable_credits_federal
     refundable_credits = refundable_credits_federal + refundable_credits_state
 
@@ -234,7 +236,9 @@ def calculate_deltas(married, separate):
     )
 
 
-def create_table_data(categories, married_values, separate_values, tab_name, filter_zeros=True):
+def create_table_data(
+    categories, married_values, separate_values, tab_name, filter_zeros=True
+):
     formatted_married, formatted_separate, formatted_delta, formatted_delta_percent = (
         calculate_deltas(married_values, separate_values)
     )
@@ -254,6 +258,7 @@ def create_table_data(categories, married_values, separate_values, tab_name, fil
         df = df[(df["Married"] != "$0") | (df["Not Married"] != "$0")]
     return df
 
+
 if submit:
     programs = get_categorized_programs(
         state_code, head_employment_income, spouse_employment_income, children_ages
@@ -271,7 +276,9 @@ if submit:
     spouse_separate = programs[2][:-3]
     separate = [x + y for x, y in zip(head_separate, spouse_separate)]
 
-    total_data = create_table_data(programs_list, married_programs, separate, "Summary", filter_zeros=False)
+    total_data = create_table_data(
+        programs_list, married_programs, separate, "Summary", filter_zeros=False
+    )
 
     # Benefits Data
     benefits_categories = list(programs[0][-2].keys())
