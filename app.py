@@ -132,9 +132,16 @@ def get_programs(
     )
 
     # Load refundable credits for both paths
-    refundable_credits_federal = load_credits_from_yaml(package, resource_path_federal)
-    refundable_credits_state = load_credits_from_yaml(package, resource_path_state)
+    try:
+        refundable_credits_federal = load_credits_from_yaml(package, resource_path_federal)
+    except FileNotFoundError:
+        refundable_credits_federal = []
 
+    try:
+        refundable_credits_state = load_credits_from_yaml(package, resource_path_state)
+    except FileNotFoundError:
+        refundable_credits_state = []
+    
     # Ensure refundable_credits is the same shape as refundable_credits_federal
     refundable_credits = refundable_credits_federal + refundable_credits_state
 
