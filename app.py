@@ -1,65 +1,102 @@
 import streamlit as st
-import plotly.express as px
 from policyengine_us import Simulation
-from policyengine_core.charts import format_fig
 from policyengine_us.variables.household.demographic.geographic.state_code import (
     StateCode,
 )
-from policyengine_us.variables.household.income.household.household_benefits import household_benefits as HouseholdBenefits
-import numpy as np
+from policyengine_us.variables.household.income.household.household_benefits import (
+    household_benefits as HouseholdBenefits,
+)
+from policyengine_us.variables.household.income.household.household_tax_before_refundable_credits import (
+    household_tax_before_refundable_credits as HouseholdTaxBeforeRefundableCredits,
+)
+
 import pandas as pd
-import hashlib
-# Create a function to get net income for the household, married or separate.
-def get_heatmap_values(state_code, children_ages, tax_unit):
-    # Tuple of net income for separate and married.
-    net_income_married = get_marital_values(
-        state_code, True, children_ages, tax_unit
-    )
-    net_income_separate = get_marital_values(state_code,False,children_ages, tax_unit)
-    final_separate = []
-    for val in net_income_separate:
-        temp_array = []
-        for val2 in net_income_separate:
-            temp_array.append(val + val2)
-        final_separate.append(temp_array)
 
-    return net_income_married, final_separate
+import yaml
+import pkg_resources
+import datetime
 
+
+def load_credits_from_yaml(package, resource_path):
+    yaml_file = pkg_resources.resource_stream(package, resource_path)
+    data = yaml.safe_load(yaml_file)
+    # Find the newest available year
+    newest_year = max(data["values"].keys())
+    credits = data["values"].get(newest_year, [])
+
+    return credits
+
+
+# Constants
 DEFAULT_AGE = 40
 YEAR = "2024"
-HEAT_MAP_OUTPUTS = {
-    "Income": ["household_net_income","employment_income"],
-    "Benefits":["household_benefits", "employment_income"],
-    "Taxes": ["household_tax_before_refundable_credits","employment_income"] , 
-    "Credits": ["household_refundable_tax_credits", "employment_income"]
+
+# Streamlit heading and description
+st.header("Marriage Incentive Calculator")
+st.write(
+    "This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income"
+)
+st.markdown(
+    "This application utilizes the [`policyengine-us` Python package](https://github.com/policyengine/policyengine-us).",
+)
+
+# Streamlit inputs for state code, head income, and spouse income.
+statecodes = [s.value for s in StateCode]
+US_TERRITORIES = {
+    "GU": "Guam",
+    "MP": "Northern Mariana Islands",
+    "PW": "Palau",
+    "PR": "Puerto Rico",
+    "VI": "Virgin Islands",
+    "AA": "Armed Forces Americas (Except Canada)",
+    "AE": "Armed Forces Africa/Canada/Europe/Middle East",
+    "AP": "Armed Forces Pacific",
+}
+options = [value for value in statecodes if value not in US_TERRITORIES]
+state_code = st.selectbox("State Code", options)
+head_employment_income = st.number_input(
+    "Head Employment Income", min_value=0, step=10000, value=0
+)
+spouse_employment_income = st.number_input(
+    "Spouse Employment Income", min_value=0, step=10000, value=0
+)
+num_children = st.number_input("Number of Children", 0)
+children_ages = {
+    num: st.number_input(f"Child {num} Age", 0) for num in range(1, num_children + 1)
 }
 
-def get_programs(state_code, head_employment_income, spouse_employment_income=None, children_ages = {}):
-    # Start by adding the single head.
+# Submit button
+submit = st.button("Calculate")
+
+
+def create_situation(state_code, head_income, spouse_income=None, children_ages=None):
+    """
+    Create a situation dictionary for the simulation.
+    """
+    if children_ages is None:
+        children_ages = {}
+
     situation = {
         "people": {
             "you": {
                 "age": {YEAR: DEFAULT_AGE},
-                "employment_income": {YEAR: head_employment_income},
+                "employment_income": {YEAR: head_income},
             }
         }
     }
     members = ["you"]
-    if spouse_employment_income is not None:
+    if spouse_income is not None:
         situation["people"]["your partner"] = {
             "age": {YEAR: DEFAULT_AGE},
-            "employment_income": {YEAR: spouse_employment_income},
+            "employment_income": {YEAR: spouse_income},
         }
-        # Add your partner to members list.
         members.append("your partner")
     for key, value in children_ages.items():
         situation["people"][f"child {key}"] = {
             "age": {YEAR: value},
-            "employment_income": {YEAR: 0}
+            "employment_income": {YEAR: 0},
         }
-        # Add child to members list.
         members.append(f"child {key}")
-    # Create all parent entities.
     situation["families"] = {"your family": {"members": members}}
     situation["marital_units"] = {"your marital unit": {"members": members}}
     situation["tax_units"] = {"your tax unit": {"members": members}}
@@ -67,442 +104,249 @@ def get_programs(state_code, head_employment_income, spouse_employment_income=No
     situation["households"] = {
         "your household": {"members": members, "state_name": {YEAR: state_code}}
     }
+    return situation
+
+
+def get_programs(
+    state_code,
+    head_employment_income,
+    spouse_employment_income=None,
+    children_ages=None,
+):
+    """
+    Retrieve program calculations for the given situation.
+    """
+    situation = create_situation(
+        state_code, head_employment_income, spouse_employment_income, children_ages
+    )
     simulation = Simulation(situation=situation)
 
-    #benefits breakdown
     benefits_categories = HouseholdBenefits.adds
+
+    taxes_before_refundable_credits = HouseholdTaxBeforeRefundableCredits.adds
+
+    package = "policyengine_us"
+    resource_path_federal = "parameters/gov/irs/credits/refundable.yaml"
+    resource_path_state = (
+        f"parameters/gov/states/{state_code.lower()}/tax/income/credits/refundable.yaml"
+    )
+
+    # Load refundable credits for both paths
+    try:
+        refundable_credits_federal = load_credits_from_yaml(
+            package, resource_path_federal
+        )
+    except FileNotFoundError:
+        refundable_credits_federal = []
+
+    try:
+        refundable_credits_state = load_credits_from_yaml(package, resource_path_state)
+    except FileNotFoundError:
+        refundable_credits_state = []
+
+    # Ensure refundable_credits is the same shape as refundable_credits_federal
+    refundable_credits = refundable_credits_federal + refundable_credits_state
 
     household_net_income = int(simulation.calculate("household_net_income", YEAR))
     household_benefits = int(simulation.calculate("household_benefits", YEAR))
-    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", int(YEAR)))
-    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", int(YEAR)))
-    
-    benefits_dic ={}
+    household_refundable_tax_credits = int(
+        simulation.calculate("household_refundable_tax_credits", int(YEAR))
+    )
+    household_tax_before_refundable_credits = int(
+        simulation.calculate("household_tax_before_refundable_credits", int(YEAR))
+    )
+
+    benefits_dict = {}
     for benefit in benefits_categories:
-        try:
-            benefit_amount = int(simulation.calculate(benefit, YEAR)[0])
-        except ValueError:
-            benefit_amount = 0
-            
-        benefits_dic[benefit]=benefit_amount
+        benefit_amount = int(simulation.calculate(benefit, YEAR, map_to="household")[0])
+        benefits_dict[benefit] = benefit_amount
 
-    return [household_net_income ,household_benefits ,household_refundable_tax_credits,household_tax_before_refundable_credits, benefits_dic]
-   
-def get_categorized_programs(state_code, head_employment_income, spouse_employment_income, children_ages):
-    programs_married = get_programs(state_code, head_employment_income, spouse_employment_income, children_ages)
-    programs_head = get_programs(state_code, head_employment_income, None, children_ages)
-    programs_spouse = get_programs(state_code, spouse_employment_income, None, {})  # Pass an empty dictionary for children_ages
-    return [programs_married, programs_head, programs_spouse]
+    credits_dic = {}
+    for credit in refundable_credits:
+        credit_amount = int(simulation.calculate(credit, YEAR, map_to="household")[0])
+        credits_dic[credit] = credit_amount
 
-# Create a function to get net income for household
-def get_marital_values(state_code, spouse, children_ages, tax_unit):
-    # Start by adding the single head.
-    situation = {
-        "people": {
-            "you": {
-                "age": {YEAR: DEFAULT_AGE},
-            }
-        }
-    }
-    members = ["you"]
-    if spouse:
-        situation["people"]["your partner"] = {
-            "age": {YEAR: DEFAULT_AGE},
-        }
-        # Add your partner to members list.
-        members.append("your partner")
-    for key, value in children_ages.items():
-        situation["people"][f"child {key}"] = {
-            "age": {YEAR: value},
-        }
-        # Add child to members list.
-        members.append(f"child {key}")
-    # Create all parent entities.
-    situation["families"] = {"your family": {"members": members}}
-    situation["marital_units"] = {"your marital unit": {"members": members}}
-    situation["tax_units"] = {"your tax unit": {"members": members}}
-    situation["spm_units"] = {"your spm_unit": {"members": members}}
-    situation["households"] = {
-        "your household": {"members": members, "state_name": {YEAR: state_code}}
-    }
-    if spouse:
-        situation["axes"]= [
-            [
-            {
-                "name": HEAT_MAP_OUTPUTS[tax_unit][1],
-                "count": 9,
-                "index": 0,
-                "min": 0,
+    taxes_before_refundable_credits_dic = {}
+    for tax in taxes_before_refundable_credits:
+        tax_amount = int(simulation.calculate(tax, YEAR, map_to="household")[0])
+        taxes_before_refundable_credits_dic[tax] = tax_amount
 
-                "max": 80000,
-                "period": YEAR
-            }
-            ],
-            [
-            {
-                "name": HEAT_MAP_OUTPUTS[tax_unit][1],
-                "count": 9,
-                "index": 1,
-                "min": 0,
-                "max": 80000,
-                "period": YEAR
-            }
-            ]
-        ]
-    else:
-         situation["axes"]= [
-            [
-            {
-                "name": HEAT_MAP_OUTPUTS[tax_unit][1],
-
-                "count": 9,
-                "min": 0,
-                "max": 80000,
-                "period": YEAR
-            }
-          
-            ]
-           
-        ]
-
-  
-
-    simulation = Simulation(situation=situation)
-    return simulation.calculate(HEAT_MAP_OUTPUTS[tax_unit][0], int(YEAR))
-
-#Streamlit heading and description
-header = st.header("Marriage Incentive Calculator")  
-header_description = st.write("This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income")
-repo_link = st.markdown("This application utilizes <a href='https://github.com/PolicyEngine/us-marriage-incentive'>the policyengine API</a>", unsafe_allow_html=True)  
+    return [
+        household_net_income,
+        household_benefits,
+        household_refundable_tax_credits,
+        household_tax_before_refundable_credits,
+        taxes_before_refundable_credits_dic,
+        benefits_dict,
+        credits_dic,
+    ]
 
 
-# Create Streamlit inputs for state code, head income, and spouse income.
-statecodes = [s.value for s in StateCode]
-us_territories = {
-    "GU" : "Guam", 
-    "MP" : "Northern Mariana Islands",
-    "PW" : "Palau",
-    "PR" : "Puerto Rico",
-    "VI" : "Virgin Islands",
-    "AA" :"Armed Forces Americas (Except Canada)",
-    "AE" : "Armed Forces Africa/Canada/Europe/Middle East",
-    "AP" : "Armed Forces Pacific"
-}
-options = [value for value in statecodes if value not in us_territories]
-state_code = st.selectbox("State Code", options)
-head_employment_income = st.number_input("Head Employment Income", step=10000, value=0)
-spouse_employment_income = st.number_input("Spouse Employment Income", step=10000, value=0)
-num_children = st.number_input("Number of Children", 0)
-children_ages = {}
-for num in range(1,num_children + 1):
-    children_ages[num] = st.number_input(f"Child {num} Age", 0)
-#Heatmap values type 
-#heatmap_button = st.button("Generate Heatmap")
-tax_unit_options= ["Income","Benefits", "Taxes", "Credits" ]
-heatmap_tax_unit = st.selectbox("Heat Map Variable", tax_unit_options)
+def get_categorized_programs(
+    state_code, head_employment_income, spouse_employment_income, children_ages
+):
+    """
+    Retrieve program calculations for both married and separate situations.
+    """
+    programs_married = get_programs(
+        state_code, head_employment_income, spouse_employment_income, children_ages
+    )
+    programs_head_if_single_with_children = get_programs(
+        state_code, head_employment_income, None, children_ages
+    )
+    programs_spouse_if_single_without_children = get_programs(
+        state_code, spouse_employment_income, None, {}
+    )  # Pass an empty dictionary for children_ages
+    return [
+        programs_married,
+        programs_head_if_single_with_children,
+        programs_spouse_if_single_without_children,
+    ]
 
-#submit button
-submit = st.button("Calculate")
 
-#submit.click()
-# Get net incomes.
+def summarize_marriage_bonus(marriage_bonus, marriage_bonus_percent):
+    """
+    Create a string to summarize the marriage bonus or penalty.
+    """
+    return (
+        f"If you file separately, your combined net income will be ${abs(marriage_bonus):,.2f} "
+        f"{'less' if marriage_bonus < 0 else 'more'} "
+        f"({abs(marriage_bonus_percent):.1%}) than if you file together."
+    )
 
-if submit:  
-    programs = get_categorized_programs(state_code, head_employment_income, spouse_employment_income,  children_ages)
-    
-    # benefits breakdowns
-    benefits_categories = programs[0][-1].keys()
-    benefits_married = programs[0][-1].values()
-    benefits_head = programs[1][-1].values()
-    benefits_spouse = programs[2][-1].values()
-    benefits_separate = [x + y for x, y in zip(benefits_head, benefits_spouse)]
-    benefits_delta = [x - y for x, y in zip(benefits_married, benefits_separate)]
-    benefits_delta_percent = [(x - y) / x if x != 0 else 0 for x, y in zip(benefits_married, benefits_separate)]
 
-    # format benefits breakdowns
-    formatted_benefits_married = list(map(lambda x: "${:,}".format(round(x)), benefits_married))
-    formatted_benefits_separate = list(map(lambda x: "${:,}".format(round(x)), benefits_separate))
-    formatted_benefits_delta = list(map(lambda x: "${:,}".format(round(x)), benefits_delta))
-    formatted_benefits_delta_percent = list(map(lambda x: "{:.1%}".format(x), benefits_delta_percent))
+def format_program_name(name):
+    return name.replace("_", " ").title()
 
-    # married programs
-    married_programs = programs[0][:-1] # we exclude the last element which is the dictionary of benefits breakdown 
-    formatted_married_programs = list(map(lambda x: "${:,}".format(round(x)), married_programs))
-    
-    # separate programs
-    head_separate = programs[1][:-1] # we exclude the last element which is the dictionary of benefits breakdown 
-    spouse_separate = programs[2][:-1] # we exclude the last element which is the dictionary of benefits breakdown 
-    separate = [x + y for x, y in zip(head_separate, spouse_separate)]
+
+def calculate_deltas(married, separate):
+    delta = [x - y for x, y in zip(married, separate)]
+    delta_percent = [(x - y) / y if y != 0 else 0 for x, y in zip(married, separate)]
+
+    formatted_married = list(map(lambda x: "${:,}".format(round(x)), married))
     formatted_separate = list(map(lambda x: "${:,}".format(round(x)), separate))
-    
-    # delta
-    delta = [x - y for x, y in zip(married_programs, separate)]
-    delta_percent = [(x - y) / x if x != 0 and x != 0 else 0 for x, y in zip(married_programs, separate)]
-
     formatted_delta = list(map(lambda x: "${:,}".format(round(x)), delta))
     formatted_delta_percent = list(map(lambda x: "{:.1%}".format(x), delta_percent))
 
-    programs = ["Net Income", "Benefits", "Refundable tax credits", "Taxes before refundable credits"]
+    return (
+        formatted_married,
+        formatted_separate,
+        formatted_delta,
+        formatted_delta_percent,
+    )
 
 
-    # Determine marriage penalty or bonus, and extent in dollars and percentage.
-    marriage_bonus = married_programs[0] - separate[0]
-    marriage_bonus_percent = marriage_bonus / married_programs[0]
-    def summarize_marriage_bonus(marriage_bonus):
-        # Create a string to summarize the marriage bonus or penalty.
-        return (
-            f"If you file separately, your combined net income will be ${abs(marriage_bonus):,.2f} "
-            f"{'less' if marriage_bonus > 0 else 'more'} "
-            f"({abs(marriage_bonus_percent):.1%}) than if you file together."
-        )
+def create_table_data(
+    categories, married_values, separate_values, tab_name, filter_zeros=True
+):
+    formatted_married, formatted_separate, formatted_delta, formatted_delta_percent = (
+        calculate_deltas(married_values, separate_values)
+    )
 
-
-    if marriage_bonus > 0:
-        st.write("You face a marriage BONUS.")
-    elif marriage_bonus < 0:
-        st.write("You face a marriage PENALTY.")
-    else:
-        st.write("You face no marriage penalty or bonus.")
-
-    st.write(summarize_marriage_bonus(marriage_bonus))
-
-    # Formatting for visual display
-    # Sample data for main table
     table_data = {
-        'Program': programs,
-        'Not Married': formatted_separate,
-        'Married': formatted_married_programs,
-        'Delta': formatted_delta,
-        'Delta Percentage': formatted_delta_percent
+        "Program": [format_program_name(cat) for cat in categories],
+        "Not Married": formatted_separate,
+        "Married": formatted_married,
+        "Delta": formatted_delta,
+        "Delta Percentage": formatted_delta_percent,
+        "Tab": [tab_name] * len(categories),
     }
 
-    # Benefits breakdown table
-    benefits_table = {
-        'Program': benefits_categories,
-        'Not Married': formatted_benefits_separate,
-        'Married': formatted_benefits_married,
-        'Delta': formatted_benefits_delta,
-        'Delta Percentage': formatted_benefits_delta_percent
-        
-    }
-    # filter benefits to keep only the non-zero values
-    benefits_df = pd.DataFrame(benefits_table)
-    filtered_benefits_df = benefits_df[(benefits_df['Not Married'] != "$0") | (benefits_df['Married'] != "$0")]
-    
-    # Display the tables in Streamlit
-    if not filtered_benefits_df.empty: # if we have benefits
-        tab1, tab2 = st.tabs(["Summary", "Benefits Breakdown"])
-        with tab1:
-            st.dataframe(table_data, hide_index=True)
+    df = pd.DataFrame(table_data)
+    if filter_zeros:
+        # Filter out rows where both "Married" and "Not Married" values are 0
+        df = df[(df["Married"] != "$0") | (df["Not Married"] != "$0")]
+    return df
 
 
-        with tab2:
-            st.dataframe(filtered_benefits_df, hide_index=True)
-
-    else: # if we don't have benefits, display just the main table
-        st.dataframe(table_data, hide_index=True)
-    
-heat_map_percentage = st.checkbox("Heatmap in Percentages")
-def calculate_bonus():
-    married_incomes , separate_incomes = get_heatmap_values(state_code, children_ages)
-    bonus_penalties = [(x - y)/x for x, y in zip(married_incomes.tolist(), separate_incomes.tolist())]
-    array = np.array(bonus_penalties)
-    nested_lists = np.reshape(array, (9, 9))
-    print(bonus_penalties)
-    return nested_lists
-
-def get_chart(data, heatmap_tax_unit):
-    # Function to calculate the input data (replace with your actual data calculation)
-    # Set numerical values for x and y axes
-    x_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
-    y_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
-
-    label_legend = {
-        "Income": "Income Change",
-        "Benefits": "Benefits Change",
-        "Taxes": "Tax Change",
-        "Credits": "Credit Change"
-    }
-
-    abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
-    z_min = -abs_max
-    z_max = abs_max
-    color_scale = [
-            (0, '#616161'), 
-            (0.5, '#FFFFFF'),  
-            (1, '#2C6496')  
-            ]
-    # Display the chart once data calculation is complete
-    fig = px.imshow(data,
-
-                    labels=dict(x="Head Employment Income", y="Spouse Employment Income", color= label_legend[heatmap_tax_unit]),
-
-                    x=x_values,
-                    y=y_values,
-                    zmin=z_min,
-                    zmax=z_max,
-                    color_continuous_scale=color_scale,
-                    origin='lower'
-                )
-
-    fig.update_xaxes(side="bottom")
-    fig.update_layout(
-        xaxis=dict(
-            tickmode='array',
-            tickvals=[0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
-            ticktext=["{}k".format(int(val/1000)) for val in [0, 10000,20000, 30000,40000,50000, 60000, 70000, 80000]],
-            showgrid=True,
-            zeroline=False,
-            title=dict(text='Head Employment Income', standoff=15),
-        ),
-        yaxis=dict(
-            tickmode='array',
-            tickvals=[0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
-            ticktext=["{}k".format(int(val/1000)) for val in [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]],
-            showgrid=True,
-            zeroline=False,
-            title=dict(text='Spouse Employment Income', standoff=15),
-            scaleanchor="x",
-            scaleratio=1,
-        )
+if submit:
+    programs = get_categorized_programs(
+        state_code, head_employment_income, spouse_employment_income, children_ages
     )
 
+    # Total Programs Data
+    programs_list = [
+        "Net income",
+        "Benefits",
+        "Refundable tax credits",
+        "Taxes before refundable credits",
+    ]
+    married_programs = programs[0][:-3]
+    head_separate = programs[1][:-3]
+    spouse_separate = programs[2][:-3]
+    separate = [x + y for x, y in zip(head_separate, spouse_separate)]
 
-    fig.update_layout(height=600, width=800)
-    # Add header
-    st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
-    fig = format_fig(fig)
-    # Display the chart
-    
-    st.plotly_chart(fig, use_container_width=True)
-        
-def get_chart_percentage(data, heatmap_tax_unit):
-    # Function to calculate the input data (replace with your actual data calculation)
-    # Set numerical values for x and y axes
-    x_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
-    y_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
-
-    label_legend = {
-        "Income": "Income Change %",
-        "Benefits": "Benefits Change %",
-        "Taxes": "Tax Change %",
-        "Credits": "Credit Change %"
-    }
-    abs_max = max(abs(min(map(min, data))), abs(max(map(max, data))))
-    z_min = -abs_max
-    z_max = abs_max
-    color_scale = [
-            (0, '#616161'), 
-            (0.5, '#FFFFFF'),  
-            (1, '#2C6496')  
-            ]
-    
-    
-    
-    
-    # Display the chart once data calculation is complete
-    fig = px.imshow(data,
-                    labels=dict(x="Head Employment Income", y="Spouse Employment Income", color=label_legend[heatmap_tax_unit]),
-                    x=x_values,
-                    y=y_values,
-                    zmin=z_min,
-                    zmax=z_max,
-                    color_continuous_scale=color_scale,
-                    origin='lower'
-                )
-    
-    # Add custom data (percentage values) to the figure
-    fig.update_traces(customdata=data)
-    
-    fig.update_xaxes(side="bottom")
-    fig.update_layout(
-        xaxis=dict(
-            tickmode='array',
-            tickvals=[0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
-            ticktext=["{}k".format(int(val/1000)) for val in [0, 10000,20000, 30000,40000,50000, 60000, 70000, 80000]],
-            showgrid=True,
-            zeroline=False,
-            title=dict(text='Head Employment Income', standoff=15),
-        ),
-        yaxis=dict(
-            tickmode='array',
-            tickvals=[0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000],
-            ticktext=["{}k".format(int(val/1000)) for val in [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]],
-            showgrid=True,
-            zeroline=False,
-            title=dict(text='Spouse Employment Income', standoff=15),
-            scaleanchor="x",
-            scaleratio=1,
-        )
+    total_data = create_table_data(
+        programs_list, married_programs, separate, "Summary", filter_zeros=False
     )
-   
-    fig.update_layout(height=600, width=800)
-    
-    # Customize hover template to display x and y values along with the percentage change
-    fig.update_traces(hovertemplate='Head Employment Income: %{x}<br>Spouse Employment Income: %{y}<br>Change: %{customdata:.2f}%')
 
-    
-    
-    # Add header
-    st.markdown("<h3 style='text-align: center; color: black;'>Marriage Incentive and Penalty Analysis</h3>", unsafe_allow_html=True)
-    
-    # Display the chart
-    st.plotly_chart(fig, use_container_width=True)
+    # Benefits Data
+    benefits_categories = list(programs[0][-2].keys())
+    benefits_married = list(programs[0][-2].values())
+    benefits_head = list(programs[1][-2].values())
+    benefits_spouse = list(programs[2][-2].values())
+    benefits_separate = [x + y for x, y in zip(benefits_head, benefits_spouse)]
 
-@st.cache_data(hash_funcs={dict: lambda _: None})
-def heatmap_calculation(state_code, children_ages_hash, children_ages):
-    final_lists = {}
-    final_list_percentage = {}
-    for key, _ in HEAT_MAP_OUTPUTS.items():
-        married_incomes, separate_incomes = get_heatmap_values(state_code, children_ages, key)
-        
-        if isinstance(married_incomes, list):
-            married_incomes_array = np.array(married_incomes)
-        else:
-            married_incomes_array = married_incomes
+    benefits_data = create_table_data(
+        benefits_categories, benefits_married, benefits_separate, "Benefits Breakdown"
+    )
 
-        if isinstance(separate_incomes[0], list):
-            separate_incomes_array = np.array(separate_incomes)
-        else:
-            separate_incomes_array = separate_incomes
-        
-        married_incomes_2d = married_incomes_array.reshape(9, 9)
-        bonus_penalties = []
-        bonus_penalties_percentage = []
-        for row, col in zip(married_incomes_2d.tolist(), separate_incomes_array.tolist()):
-            row_bonus_penalties = []
-            row_bonus_penalties_percentage =  []
-            for x, y in zip(row, col):
-                if x != 0:  # Avoid division by zero
-                    row_bonus_penalties.append((x - y))
-                    row_bonus_penalties_percentage.append(((x-y)/x)* 100)
-                else:
-                    row_bonus_penalties.append(0)
-                    row_bonus_penalties_percentage.append(0)# Handle zero division
-            bonus_penalties.append(row_bonus_penalties)
-            bonus_penalties_percentage.append(row_bonus_penalties_percentage)
-        
-        final_lists[key] = bonus_penalties
-        final_list_percentage[key] = bonus_penalties_percentage
+    # Refundable Credits Data
+    credits_categories = list(programs[0][-1].keys())
+    credits_married = list(programs[0][-1].values())
+    credits_head = list(programs[1][-1].values())
+    credits_spouse = list(programs[2][-1].values())
+    credits_separate = [x + y for x, y in zip(credits_head, credits_spouse)]
 
+    credits_data = create_table_data(
+        credits_categories, credits_married, credits_separate, "Refundable Credits"
+    )
 
-    return final_lists, final_list_percentage   
+    # Taxes Data
+    taxes_categories = list(programs[0][-3].keys())
+    taxes_married = list(programs[0][-3].values())
+    taxes_head = list(programs[1][-3].values())
+    taxes_spouse = list(programs[2][-3].values())
+    taxes_separate = [x + y for x, y in zip(taxes_head, taxes_spouse)]
 
-children_ages_hash = hashlib.md5(str(children_ages).encode()).hexdigest()
+    taxes_data = create_table_data(
+        taxes_categories,
+        taxes_married,
+        taxes_separate,
+        "Taxes before Refundable Credits",
+    )
 
-data, percentage_data = heatmap_calculation(state_code, children_ages_hash, children_ages)
+    # Combine all data into a single DataFrame
+    all_data = pd.concat([total_data, benefits_data, credits_data, taxes_data])
 
-# Check if the children_ages dictionary has changed and rerun the calculation
-if "children_ages_hash" not in st.session_state:
-    st.session_state.children_ages_hash = children_ages_hash
-else:
-    # Check if the children_ages dictionary has changed and update the hash
-    if st.session_state.children_ages_hash != children_ages_hash:
-        st.session_state.children_ages_hash = children_ages_hash
-
-if heat_map_percentage:
-    selected_heatmap_values = percentage_data[heatmap_tax_unit]
-    get_chart_percentage(selected_heatmap_values, heatmap_tax_unit)
-else:
-    selected_heatmap_values = data[heatmap_tax_unit]
-    get_chart(selected_heatmap_values, heatmap_tax_unit)
+    # Filter data for each tab and display
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "Summary",
+            "Benefits Breakdown",
+            "Refundable Credits",
+            "Taxes before Refundable Credits",
+        ]
+    )
+    with tab1:
+        st.dataframe(
+            all_data[all_data["Tab"] == "Summary"].drop(columns=["Tab"]),
+            hide_index=True,
+        )
+    with tab2:
+        st.dataframe(
+            all_data[all_data["Tab"] == "Benefits Breakdown"].drop(columns=["Tab"]),
+            hide_index=True,
+        )
+    with tab3:
+        st.dataframe(
+            all_data[all_data["Tab"] == "Refundable Credits"].drop(columns=["Tab"]),
+            hide_index=True,
+        )
+    with tab4:
+        st.dataframe(
+            all_data[all_data["Tab"] == "Taxes before Refundable Credits"].drop(
+                columns=["Tab"]
+            ),
+            hide_index=True,
+        )
