@@ -57,19 +57,26 @@ state_code = st.selectbox("State Code", options)
 head_employment_income = st.number_input(
     "Head Employment Income", min_value=0, step=10000, value=0
 )
+head_disability = st.checkbox("Head is disabled")
 spouse_employment_income = st.number_input(
     "Spouse Employment Income", min_value=0, step=10000, value=0
 )
+spouse_disability = st.checkbox("Spouse is disabled")
 num_children = st.number_input("Number of Children", 0)
-children_ages = {
-    num: st.number_input(f"Child {num} Age", 0) for num in range(1, num_children + 1)
+children_ages = {}
+for num in range(1, num_children + 1):
+    age = st.number_input(f"Child {num} Age", min_value=0, max_value=100, step=1, value=0)
+    is_disabled = st.checkbox(f"Child {num} is disabled")
+    children_ages[num] = {'age': age, 'is_disabled': is_disabled}
+disability = {
+    "head": head_disability,
+    "spouse": spouse_disability
 }
-
 # Submit button
 submit = st.button("Calculate")
 
 
-def create_situation(state_code, head_income, spouse_income=None, children_ages=None):
+def create_situation(state_code, head_income,is_disable, spouse_income=None, children_ages=None, ):
     """
     Create a situation dictionary for the simulation.
     """
@@ -81,6 +88,7 @@ def create_situation(state_code, head_income, spouse_income=None, children_ages=
             "you": {
                 "age": {YEAR: DEFAULT_AGE},
                 "employment_income": {YEAR: head_income},
+                "is_disabled": is_disable['head']
             }
         }
     }
@@ -89,12 +97,14 @@ def create_situation(state_code, head_income, spouse_income=None, children_ages=
         situation["people"]["your partner"] = {
             "age": {YEAR: DEFAULT_AGE},
             "employment_income": {YEAR: spouse_income},
+            "is_disabled": is_disable['spouse']
         }
         members.append("your partner")
     for key, value in children_ages.items():
         situation["people"][f"child {key}"] = {
-            "age": {YEAR: value},
+            "age": {YEAR: value["age"]},
             "employment_income": {YEAR: 0},
+            "is_disabled": value["is_disabled"]
         }
         members.append(f"child {key}")
     situation["families"] = {"your family": {"members": members}}
@@ -117,7 +127,7 @@ def get_programs(
     Retrieve program calculations for the given situation.
     """
     situation = create_situation(
-        state_code, head_employment_income, spouse_employment_income, children_ages
+        state_code, head_employment_income,  disability, spouse_employment_income, children_ages
     )
     simulation = Simulation(situation=situation)
 
