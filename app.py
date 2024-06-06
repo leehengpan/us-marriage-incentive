@@ -68,7 +68,7 @@ for num in range(1, num_children + 1):
     age = st.number_input(f"Child {num} Age", min_value=0, max_value=100, step=1, value=0)
     is_disabled = st.checkbox(f"Child {num} is disabled")
     children_ages[num] = {'age': age, 'is_disabled': is_disabled}
-disability = {
+disability_status  = {
     "head": head_disability,
     "spouse": spouse_disability
 }
@@ -76,7 +76,7 @@ disability = {
 submit = st.button("Calculate")
 
 
-def create_situation(state_code, head_income,is_disable, spouse_income=None, children_ages=None, ):
+def create_situation(state_code, head_income, is_disabled, spouse_income=None, children_ages=None, ):
     """
     Create a situation dictionary for the simulation.
     """
@@ -88,7 +88,7 @@ def create_situation(state_code, head_income,is_disable, spouse_income=None, chi
             "you": {
                 "age": {YEAR: DEFAULT_AGE},
                 "employment_income": {YEAR: head_income},
-                "is_disabled": is_disable['head']
+                "is_disabled": is_disabled['head'] ,
             }
         }
     }
@@ -97,7 +97,7 @@ def create_situation(state_code, head_income,is_disable, spouse_income=None, chi
         situation["people"]["your partner"] = {
             "age": {YEAR: DEFAULT_AGE},
             "employment_income": {YEAR: spouse_income},
-            "is_disabled": is_disable['spouse']
+            "is_disabled": is_disabled['spouse'] 
         }
         members.append("your partner")
     for key, value in children_ages.items():
@@ -127,7 +127,7 @@ def get_programs(
     Retrieve program calculations for the given situation.
     """
     situation = create_situation(
-        state_code, head_employment_income,  disability, spouse_employment_income, children_ages
+        state_code, head_employment_income,  disability_status, spouse_employment_income, children_ages
     )
     simulation = Simulation(situation=situation)
 
