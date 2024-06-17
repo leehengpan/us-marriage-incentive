@@ -63,11 +63,9 @@ spouse_employment_income = st.number_input(
 )
 spouse_disability = st.checkbox("Spouse is disabled")
 num_children = st.number_input("Number of Children", 0)
-children_ages = {}
-for num in range(1, num_children + 1):
-    age = st.number_input(f"Child {num} Age", min_value=0, max_value=100, step=1, value=0)
-    is_disabled = st.checkbox(f"Child {num} is disabled")
-    children_ages[num] = {'age': age, 'is_disabled': is_disabled}
+children_ages = {
+    num: st.number_input(f"Child {num} Age", 0) for num in range(1, num_children + 1)
+}
 disability_status  = {
     "head": head_disability,
     "spouse": spouse_disability
@@ -102,9 +100,8 @@ def create_situation(state_code, head_income, is_disabled, spouse_income=None, c
         members.append("your partner")
     for key, value in children_ages.items():
         situation["people"][f"child {key}"] = {
-            "age": {YEAR: value["age"]},
+            "age": {YEAR: value},
             "employment_income": {YEAR: 0},
-            "is_disabled": value["is_disabled"]
         }
         members.append(f"child {key}")
     situation["families"] = {"your family": {"members": members}}
