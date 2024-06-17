@@ -452,11 +452,13 @@ def create_situation_with_axes(
 
 
 def create_net_income_situations_with_axes(
-    state_code, head_employment_income, spouse_employment_income, children_ages
+    state_code,  children_ages
 ):
     """
     Create situations for calculating net income for married and single statuses.
     """
+    head_employment_income = 80000
+    spouse_employment_income = 80000
     # Married situation
     married_situation = create_situation_with_axes(
         state_code, head_employment_income, spouse_employment_income, children_ages
@@ -488,47 +490,40 @@ def calculate_net_income_grid(state_code, children_ages):
     """
     Calculate the net income for a range of incomes for both the head and spouse.
     """
-    x_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
-    y_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+    # Create situations
+    married_situation, single_head_situation, single_spouse_situation = (
+        create_net_income_situations_with_axes(
+            state_code, children_ages
+        )
+    )
 
-    net_income_grid = np.zeros((len(x_values), len(y_values)))
+    # Calculate net incomes
+    net_income_married = calculate_net_income_for_situation(married_situation)
+    net_income_single_head = calculate_net_income_for_situation(
+        single_head_situation
+    )
+    net_income_single_spouse = calculate_net_income_for_situation(
+        single_spouse_situation
+    )
 
-    for i, head_income in enumerate(x_values):
-        for j, spouse_income in enumerate(y_values):
+    # Ensure that the net incomes are in compatible shapes and calculate the net income delta
+    net_income_combined_singles = np.add.outer(
+        net_income_single_head, net_income_single_spouse
+    ).flatten()
+    net_income_delta = net_income_married - net_income_combined_singles
 
-            # Create situations
-            married_situation, single_head_situation, single_spouse_situation = (
-                create_net_income_situations_with_axes(
-                    state_code, head_income, spouse_income, children_ages
-                )
-            )
+    net_income_grid = np.reshape(net_income_delta, (9, 9))
 
-            # Calculate net incomes
-            net_income_married = calculate_net_income_for_situation(married_situation)
-            net_income_single_head = calculate_net_income_for_situation(
-                single_head_situation
-            )
-            net_income_single_spouse = calculate_net_income_for_situation(
-                single_spouse_situation
-            )
-
-            # Ensure that the net incomes are in compatible shapes and calculate the net income delta
-            net_income_combined_singles = np.add.outer(
-                net_income_single_head, net_income_single_spouse
-            ).flatten()
-            net_income_delta = net_income_married - net_income_combined_singles
-
-            # Store the delta value for each grid point
-            net_income_grid[i, j] = net_income_delta[j * len(x_values) + i]
-
-    return net_income_grid, x_values, y_values
+    return net_income_grid
 
 
 def create_heatmap_chart(state_code, children_ages):
     """
     Create a heatmap for net income levels for married, single head of household, and single spouse situations.
     """
-    data, x_values, y_values = calculate_net_income_grid(state_code, children_ages)
+    x_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+    y_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+    data = calculate_net_income_grid(state_code, children_ages)
 
     abs_max = max(abs(np.min(data)), abs(np.max(data)))
     z_min = -abs_max
