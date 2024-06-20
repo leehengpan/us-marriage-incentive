@@ -76,12 +76,17 @@ disability_status  = {
     "head": head_disability,
     "spouse": spouse_disability
 }
-
+disability_status  = {
+    "head": head_disability,
+    "spouse": spouse_disability
+}
 # Submit button
 submit = st.button("Calculate")
 
 
+
 def create_situation(state_code, head_income,is_disabled, spouse_income=None, children_ages=None):
+
     """
     Create a situation dictionary for the simulation.
     """
@@ -103,6 +108,7 @@ def create_situation(state_code, head_income,is_disabled, spouse_income=None, ch
             "age": {YEAR: DEFAULT_AGE},
             "employment_income": {YEAR: spouse_income},
             "is_disabled": is_disabled['spouse']
+
         }
         members.append("your partner")
     for key, value in children_ages.items():
@@ -132,7 +138,8 @@ def get_programs(
     Retrieve program calculations for the given situation.
     """
     situation = create_situation(
-         state_code, head_employment_income,  disability_status, spouse_employment_income, children_ages
+
+        state_code, head_employment_income,  disability_status, spouse_employment_income, children_ages
     )
     simulation = Simulation(situation=situation)
 
