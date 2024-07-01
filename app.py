@@ -484,7 +484,16 @@ def calculate_net_income_for_situation(situation):
     """
     simulation = Simulation(situation=situation)
     net_income = simulation.calculate("household_net_income", YEAR)
-    return np.array(net_income)  # Ensure the result is a numpy array
+    
+    # Ensure the net income is a numpy array and reshape to 9x9
+    net_income_array = np.array(net_income).reshape(9, 9)
+    
+    # Create a DataFrame with columns labeled from 0 to 80000 in increments of 10000
+    columns = [str(i) for i in range(0, 90000, 10000)]
+    df = pd.DataFrame(net_income_array, columns=columns)
+    
+    return df
+
 
 
 def calculate_net_income_grid(state_code, children_ages):
@@ -492,29 +501,27 @@ def calculate_net_income_grid(state_code, children_ages):
     Calculate the net income for a range of incomes for both the head and spouse.
     """
     # Create situations
-    married_situation, single_head_situation, single_spouse_situation = (
-        create_net_income_situations_with_axes(
-            state_code, children_ages
-        )
-    )
+    married_situation, single_head_situation, single_spouse_situation = create_net_income_situations_with_axes(state_code, children_ages)
 
     # Calculate net incomes
-    net_income_married = calculate_net_income_for_situation(married_situation)
-    net_income_single_head = calculate_net_income_for_situation(
-        single_head_situation
-    )
-    net_income_single_spouse = calculate_net_income_for_situation(
-        single_spouse_situation
-    )
+    net_income_married_df = calculate_net_income_for_situation(married_situation)
+    net_income_single_head_df = calculate_net_income_for_situation(single_head_situation)
+    net_income_single_spouse_df = calculate_net_income_for_situation(single_spouse_situation)
 
-    # Ensure that the net incomes are in compatible shapes and calculate the net income delta
+    # Convert DataFrames to numpy arrays for calculation
+    net_income_married_array = net_income_married_df.to_numpy()
+    net_income_single_head_array = net_income_single_head_df.to_numpy()
+    net_income_single_spouse_array = net_income_single_spouse_df.to_numpy()
+
+    # Calculate the net income delta
     net_income_combined_singles = np.add.outer(
-        net_income_single_head, net_income_single_spouse
-    ).flatten()
-    net_income_delta = net_income_married - net_income_combined_singles
+        net_income_single_head_array.flatten(), net_income_single_spouse_array.flatten()
+    )
+    net_income_delta = net_income_married_array.flatten()[:, None] - net_income_combined_singles
 
-    net_income_grid = np.reshape(net_income_delta, (9, 9))
-
+    # Flatten and reshape the net_income_delta to 9x9
+    net_income_grid = net_income_delta.mean(axis=1).reshape(9, 9)
+    
     return net_income_grid
 
 
@@ -577,7 +584,6 @@ def create_heatmap_chart(state_code, children_ages):
     )
     # Display the chart
     st.plotly_chart(fig, use_container_width=True)
-
 
 # Usage example in Streamlit app
 if submit:
