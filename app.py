@@ -74,10 +74,6 @@ disability_status  = {
     "head": head_disability,
     "spouse": spouse_disability
 }
-disability_status  = {
-    "head": head_disability,
-    "spouse": spouse_disability
-}
 # Submit button
 submit = st.button("Calculate")
 
