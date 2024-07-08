@@ -479,27 +479,41 @@ def create_net_income_situations_with_axes(
 
 def calculate_net_income_for_situation(situation):
     """
-    Calculate the net income for a given situation using the Simulation class.
+    Calculate the net income, benefits, refundable tax credits, and tax before refundable credits
+    for a given situation using the Simulation class.
     """
     simulation = Simulation(situation=situation)
     net_income = simulation.calculate("household_net_income", YEAR)
+    benefits = simulation.calculate("household_benefits", YEAR)
+    refundable_tax_credits = simulation.calculate("household_refundable_tax_credits", YEAR)
+    tax_before_refundable_credits = simulation.calculate("household_tax_before_refundable_credits", YEAR)
+
+    # Ensure all results are numpy arrays and reshape if necessary
+    results = {
+        "Net Income": np.array(net_income),
+        "Benefits": np.array(benefits),
+        "Refundable Tax Credits": np.array(refundable_tax_credits),
+        "Tax Before Refundable Credits": np.array(tax_before_refundable_credits)
+    }
     
-    # Ensure the net income is a numpy array
-    net_income_array = np.array(net_income)
-    
-    # If the array is one-dimensional, expand it to two dimensions
-    if net_income_array.ndim == 1:
-        net_income_array = np.expand_dims(net_income_array, axis=1)
-    
-    # Reshape the array to 9x9 if it has 81 elements
-    if net_income_array.size == 81:
-        net_income_array = net_income_array.reshape(9, 9)
-    
-    # Create a DataFrame with columns labeled from 0 to 80000 in increments of 10000
+    for key, result in results.items():
+        if result.ndim == 1:
+            results[key] = np.expand_dims(result, axis=1)
+        if result.size == 81:
+            results[key] = results[key].reshape(9, 9)
+        elif result.size == 9:
+            results[key] = results[key].reshape(9, 1)
+        else:
+            raise ValueError(f"Unexpected size for {key}: {result.size}")
+
+    # Create DataFrames
     columns = [str(i) for i in range(0, 90000, 10000)]
-    df = pd.DataFrame(net_income_array, columns=columns[:net_income_array.shape[1]])
+    data_frames = {key: pd.DataFrame(value, columns=columns[:value.shape[1]]) for key, value in results.items()}
     
-    return df
+    # Combine DataFrames into a single DataFrame with multi-level columns
+    combined_df = pd.concat(data_frames, axis=1, keys=data_frames.keys())
+    print(combined_df)
+    return combined_df
 
 
 def calculate_net_income_grid(state_code, children_ages):
@@ -514,10 +528,10 @@ def calculate_net_income_grid(state_code, children_ages):
     net_income_single_head_df = calculate_net_income_for_situation(single_head_situation)
     net_income_single_spouse_df = calculate_net_income_for_situation(single_spouse_situation)
 
-    # Convert DataFrames to numpy arrays for calculation
-    net_income_married_array = net_income_married_df.to_numpy()
-    net_income_single_head_array = net_income_single_head_df.to_numpy()
-    net_income_single_spouse_array = net_income_single_spouse_df.to_numpy()
+    # Extract the net income arrays for calculations
+    net_income_married_array = net_income_married_df[('Net Income',)].to_numpy()
+    net_income_single_head_array = net_income_single_head_df[('Net Income',)].to_numpy()
+    net_income_single_spouse_array = net_income_single_spouse_df[('Net Income',)].to_numpy()
 
     # Ensure that the single head and single spouse arrays are 2D and reshape if necessary
     if net_income_single_head_array.ndim == 1:
@@ -531,7 +545,12 @@ def calculate_net_income_grid(state_code, children_ages):
     ).reshape(9, 9)
     net_income_delta = net_income_married_array - net_income_combined_singles
 
-    return pd.DataFrame(net_income_delta, columns=net_income_married_df.columns, index=net_income_married_df.index)
+    # Return DataFrame with proper column and index structure
+    columns = net_income_married_df[('Net Income',)].columns
+    index = net_income_married_df.index
+    return pd.DataFrame(net_income_delta, columns=columns, index=index)
+
+
 
 
 def create_heatmap_chart(state_code, children_ages):
