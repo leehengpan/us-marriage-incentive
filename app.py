@@ -495,7 +495,12 @@ def calculate_net_income_for_situation(situation):
     if net_income_array.size == 81:
         net_income_array = net_income_array.reshape(9, 9)
     
-    return net_income_array
+    # Create a DataFrame with columns labeled from 0 to 80000 in increments of 10000
+    columns = [str(i) for i in range(0, 90000, 10000)]
+    df = pd.DataFrame(net_income_array, columns=columns[:net_income_array.shape[1]])
+    
+    return df
+
 
 def calculate_net_income_grid(state_code, children_ages):
     """
@@ -505,9 +510,14 @@ def calculate_net_income_grid(state_code, children_ages):
     married_situation, single_head_situation, single_spouse_situation = create_net_income_situations_with_axes(state_code, children_ages)
 
     # Calculate net incomes
-    net_income_married_array = calculate_net_income_for_situation(married_situation)
-    net_income_single_head_array = calculate_net_income_for_situation(single_head_situation)
-    net_income_single_spouse_array = calculate_net_income_for_situation(single_spouse_situation)
+    net_income_married_df = calculate_net_income_for_situation(married_situation)
+    net_income_single_head_df = calculate_net_income_for_situation(single_head_situation)
+    net_income_single_spouse_df = calculate_net_income_for_situation(single_spouse_situation)
+
+    # Convert DataFrames to numpy arrays for calculation
+    net_income_married_array = net_income_married_df.to_numpy()
+    net_income_single_head_array = net_income_single_head_df.to_numpy()
+    net_income_single_spouse_array = net_income_single_spouse_df.to_numpy()
 
     # Ensure that the single head and single spouse arrays are 2D and reshape if necessary
     if net_income_single_head_array.ndim == 1:
@@ -521,7 +531,8 @@ def calculate_net_income_grid(state_code, children_ages):
     ).reshape(9, 9)
     net_income_delta = net_income_married_array - net_income_combined_singles
 
-    return net_income_delta
+    return pd.DataFrame(net_income_delta, columns=net_income_married_df.columns, index=net_income_married_df.index)
+
 
 def create_heatmap_chart(state_code, children_ages):
     """
@@ -532,11 +543,11 @@ def create_heatmap_chart(state_code, children_ages):
     data = calculate_net_income_grid(state_code, children_ages)
 
     # Check if there is any change in data
-    if not np.any(data):
+    if not np.any(data.values):
         st.write("No changes in the net income data.")
         return
 
-    abs_max = max(abs(np.min(data)), abs(np.max(data)))
+    abs_max = max(abs(data.min().min()), abs(data.max().max()))
     z_min = -abs_max
     z_max = abs_max
     color_scale = [(0, "#616161"), (0.5, "#FFFFFF"), (1, "#2C6496")]
