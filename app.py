@@ -512,11 +512,9 @@ def calculate_net_income_for_situation(situation):
     
     # Combine DataFrames into a single DataFrame with multi-level columns
     combined_df = pd.concat(data_frames, axis=1, keys=data_frames.keys())
-    print(combined_df)
     return combined_df
 
-
-def calculate_net_income_grid(state_code, children_ages):
+def calculate_net_income_grid(state_code, children_ages, tab):
     """
     Calculate the net income for a range of incomes for both the head and spouse.
     """
@@ -529,9 +527,9 @@ def calculate_net_income_grid(state_code, children_ages):
     net_income_single_spouse_df = calculate_net_income_for_situation(single_spouse_situation)
 
     # Extract the net income arrays for calculations
-    net_income_married_array = net_income_married_df[('Net Income',)].to_numpy()
-    net_income_single_head_array = net_income_single_head_df[('Net Income',)].to_numpy()
-    net_income_single_spouse_array = net_income_single_spouse_df[('Net Income',)].to_numpy()
+    net_income_married_array = net_income_married_df[(tab,)].to_numpy()
+    net_income_single_head_array = net_income_single_head_df[(tab,)].to_numpy()
+    net_income_single_spouse_array = net_income_single_spouse_df[(tab,)].to_numpy()
 
     # Ensure that the single head and single spouse arrays are 2D and reshape if necessary
     if net_income_single_head_array.ndim == 1:
@@ -546,20 +544,20 @@ def calculate_net_income_grid(state_code, children_ages):
     net_income_delta = net_income_married_array - net_income_combined_singles
 
     # Return DataFrame with proper column and index structure
-    columns = net_income_married_df[('Net Income',)].columns
+    columns = net_income_married_df[(tab,)].columns
     index = net_income_married_df.index
     return pd.DataFrame(net_income_delta, columns=columns, index=index)
 
 
 
 
-def create_heatmap_chart(state_code, children_ages):
+def create_heatmap_chart(state_code, children_ages, tab):
     """
     Create a heatmap for net income levels for married, single head of household, and single spouse situations.
     """
     x_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
     y_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
-    data = calculate_net_income_grid(state_code, children_ages)
+    data = calculate_net_income_grid(state_code, children_ages, tab)
 
     # Check if there is any change in data
     if not np.any(data.values):
@@ -575,9 +573,9 @@ def create_heatmap_chart(state_code, children_ages):
     fig = px.imshow(
         data,
         labels=dict(
-            x="Head Employment Income",
-            y="Spouse Employment Income",
-            color="Net Income Delta",
+            x="Head "+ tab, 
+            y="Spouse " + tab ,
+            color= tab + " Delta",
         ),
         x=x_values,
         y=y_values,
@@ -595,7 +593,7 @@ def create_heatmap_chart(state_code, children_ages):
             ticktext=["{}k".format(int(val / 1000)) for val in x_values],
             showgrid=True,
             zeroline=False,
-            title=dict(text="Head Employment Income", standoff=15),
+            title=dict(text="Head "+ tab, standoff=15),
         ),
         yaxis=dict(
             tickmode="array",
@@ -603,7 +601,7 @@ def create_heatmap_chart(state_code, children_ages):
             ticktext=["{}k".format(int(val / 1000)) for val in y_values],
             showgrid=True,
             zeroline=False,
-            title=dict(text="Spouse Employment Income", standoff=15),
+            title=dict(text="Spouse " + tab, standoff=15),
             scaleanchor="x",
             scaleratio=1,
         ),
@@ -612,7 +610,7 @@ def create_heatmap_chart(state_code, children_ages):
     fig.update_layout(height=600, width=800)
     # Add header
     st.markdown(
-        "<h3 style='text-align: center; color: black;'>Net Income Heatmap</h3>",
+        "<h3 style='text-align: center; color: black;'>Heat Map</h3>",
         unsafe_allow_html=True,
     )
     # Display the chart
@@ -620,4 +618,11 @@ def create_heatmap_chart(state_code, children_ages):
 
 # Usage example in Streamlit app
 if submit:
-    create_heatmap_chart(state_code, children_ages)
+    with tab1:
+        create_heatmap_chart(state_code, children_ages, "Net Income")
+    with tab2:
+        create_heatmap_chart(state_code, children_ages, "Benefits")
+    with tab3:
+        create_heatmap_chart(state_code, children_ages, "Refundable Tax Credits")
+    with tab4:
+        create_heatmap_chart(state_code, children_ages, "Tax Before Refundable Credits")
