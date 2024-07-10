@@ -573,9 +573,9 @@ def create_heatmap_chart(state_code, children_ages, tab):
     fig = px.imshow(
         data,
         labels=dict(
-            x="Head "+ tab, 
-            y="Spouse " + tab ,
-            color= tab + " Delta",
+            x="Head Employment Income", 
+            y="Spouse Employment Income"  ,
+            color= tab + " Change",
         ),
         x=x_values,
         y=y_values,
