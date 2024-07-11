@@ -1,85 +1,52 @@
 import streamlit as st
 from policyengine_us import Simulation
-from policyengine_us.variables.household.demographic.geographic.state_code import (
-    StateCode,
-)
-from policyengine_us.variables.household.income.household.household_benefits import (
-    household_benefits as HouseholdBenefits,
-)
-from policyengine_us.variables.household.income.household.household_tax_before_refundable_credits import (
-    household_tax_before_refundable_credits as HouseholdTaxBeforeRefundableCredits,
-)
-
+from policyengine_us.variables.household.demographic.geographic.state_code import StateCode
+from policyengine_us.variables.household.income.household.household_benefits import household_benefits as HouseholdBenefits
+from policyengine_us.variables.household.income.household.household_tax_before_refundable_credits import household_tax_before_refundable_credits as HouseholdTaxBeforeRefundableCredits
 import numpy as np
-
 import pandas as pd
-
 import yaml
 import pkg_resources
-import datetime
-
 import plotly.express as px
-
-
-def load_credits_from_yaml(package, resource_path):
-    yaml_file = pkg_resources.resource_stream(package, resource_path)
-    data = yaml.safe_load(yaml_file)
-    # Find the newest available year
-    newest_year = max(data["values"].keys())
-    credits = data["values"].get(newest_year, [])
-
-    return credits
-
 
 # Constants
 DEFAULT_AGE = 40
 YEAR = "2024"
 
+def load_credits_from_yaml(package, resource_path):
+    yaml_file = pkg_resources.resource_stream(package, resource_path)
+    data = yaml.safe_load(yaml_file)
+    newest_year = max(data["values"].keys())
+    credits = data["values"].get(newest_year, [])
+    return credits
+
+
 # Streamlit heading and description
 st.header("Marriage Incentive Calculator")
-st.write(
-    "This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income"
-)
-st.markdown(
-    "This application utilizes the [`policyengine-us` Python package](https://github.com/policyengine/policyengine-us).",
-)
+st.write("This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income")
+st.markdown("This application utilizes the [`policyengine-us` Python package](https://github.com/policyengine/policyengine-us).")
 
-# Streamlit inputs for state code, head income, and spouse income.
+
+# Streamlit inputs for state code, head income, and spouse income
 statecodes = [s.value for s in StateCode]
 US_TERRITORIES = {
-    "GU": "Guam",
-    "MP": "Northern Mariana Islands",
-    "PW": "Palau",
-    "PR": "Puerto Rico",
-    "VI": "Virgin Islands",
-    "AA": "Armed Forces Americas (Except Canada)",
-    "AE": "Armed Forces Africa/Canada/Europe/Middle East",
-    "AP": "Armed Forces Pacific",
+    "GU": "Guam", "MP": "Northern Mariana Islands", "PW": "Palau", 
+    "PR": "Puerto Rico", "VI": "Virgin Islands", "AA": "Armed Forces Americas", 
+    "AE": "Armed Forces Africa/Canada/Europe/Middle East", "AP": "Armed Forces Pacific"
 }
 options = [value for value in statecodes if value not in US_TERRITORIES]
 state_code = st.selectbox("State Code", options)
-head_employment_income = st.number_input(
-    "Head Employment Income", min_value=0, step=10000, value=0
-)
+head_employment_income = st.number_input("Head Employment Income", min_value=0, step=10000, value=0)
 head_disability = st.checkbox("Head is disabled")
-spouse_employment_income = st.number_input(
-    "Spouse Employment Income", min_value=0, step=10000, value=0
-)
+spouse_employment_income = st.number_input("Spouse Employment Income", min_value=0, step=10000, value=0)
 spouse_disability = st.checkbox("Spouse is disabled")
 num_children = st.number_input("Number of Children", 0)
-children_ages = {
-    num: st.number_input(f"Child {num} Age", 0) for num in range(1, num_children + 1)
-}
-disability_status  = {
-    "head": head_disability,
-    "spouse": spouse_disability
-}
-# Submit button
+children_ages = {num: st.number_input(f"Child {num} Age", 0) for num in range(1, num_children + 1)}
+disability_status = {"head": head_disability, "spouse": spouse_disability}
 submit = st.button("Calculate")
 
 
 def create_situation(state_code, head_income,is_disabled, spouse_income=None, children_ages=None):
-
     """
     Create a situation dictionary for the simulation.
     """
@@ -219,16 +186,6 @@ def get_categorized_programs(
     ]
 
 
-def summarize_marriage_bonus(marriage_bonus, marriage_bonus_percent):
-    """
-    Create a string to summarize the marriage bonus or penalty.
-    """
-    return (
-        f"If you file separately, your combined net income will be ${abs(marriage_bonus):,.2f} "
-        f"{'less' if marriage_bonus < 0 else 'more'} "
-        f"({abs(marriage_bonus_percent):.1%}) than if you file together."
-    )
-
 
 def format_program_name(name):
     return name.replace("_", " ").title()
@@ -330,7 +287,6 @@ if submit:
         taxes_separate,
         "Taxes before Refundable Credits",
     )
-
     # Combine all data into a single DataFrame
     all_data = pd.concat([total_data, benefits_data, credits_data, taxes_data])
 
@@ -482,29 +438,25 @@ def calculate_net_income_for_situation(situation):
     Calculate the net income, benefits, refundable tax credits, and tax before refundable credits
     for a given situation using the Simulation class.
     """
-    simulation = Simulation(situation=situation)
-    net_income = simulation.calculate("household_net_income", YEAR)
-    benefits = simulation.calculate("household_benefits", YEAR)
-    refundable_tax_credits = simulation.calculate("household_refundable_tax_credits", YEAR)
-    tax_before_refundable_credits = simulation.calculate("household_tax_before_refundable_credits", YEAR)
-
-    # Ensure all results are numpy arrays and reshape if necessary
-    results = {
-        "Net Income": np.array(net_income),
-        "Benefits": np.array(benefits),
-        "Refundable Tax Credits": np.array(refundable_tax_credits),
-        "Tax Before Refundable Credits": np.array(tax_before_refundable_credits)
-    }
-    
-    for key, result in results.items():
+    def calculate_and_process(name):
+        result = np.array(simulation.calculate(name, YEAR))
         if result.ndim == 1:
-            results[key] = np.expand_dims(result, axis=1)
+            result = np.expand_dims(result, axis=1)
         if result.size == 81:
-            results[key] = results[key].reshape(9, 9)
+            return result.reshape(9, 9)
         elif result.size == 9:
-            results[key] = results[key].reshape(9, 1)
+            return result.reshape(9, 1)
         else:
-            raise ValueError(f"Unexpected size for {key}: {result.size}")
+            raise ValueError(f"Unexpected size for {name}: {result.size}")
+    
+    simulation = Simulation(situation=situation)
+    
+    results = {
+        "Net Income": calculate_and_process("household_net_income"),
+        "Benefits": calculate_and_process("household_benefits"),
+        "Refundable Tax Credits": calculate_and_process("household_refundable_tax_credits"),
+        "Tax Before Refundable Credits": calculate_and_process("household_tax_before_refundable_credits")
+    }
 
     # Create DataFrames
     columns = [str(i) for i in range(0, 90000, 10000)]
@@ -514,29 +466,23 @@ def calculate_net_income_for_situation(situation):
     combined_df = pd.concat(data_frames, axis=1, keys=data_frames.keys())
     return combined_df
 
+
 def calculate_net_income_grid(state_code, children_ages, tab):
     """
     Calculate the net income for a range of incomes for both the head and spouse.
     """
-    # Create situations
-    married_situation, single_head_situation, single_spouse_situation = create_net_income_situations_with_axes(state_code, children_ages)
+    def to_2d_array(array):
+        return np.expand_dims(array, axis=1) if array.ndim == 1 else array
 
-    # Calculate net incomes
-    net_income_married_df = calculate_net_income_for_situation(married_situation)
-    net_income_single_head_df = calculate_net_income_for_situation(single_head_situation)
-    net_income_single_spouse_df = calculate_net_income_for_situation(single_spouse_situation)
-
+    # Create situations and calculate net incomes
+    situations = create_net_income_situations_with_axes(state_code, children_ages)
+    net_incomes = [calculate_net_income_for_situation(s) for s in situations]
+    
     # Extract the net income arrays for calculations
-    net_income_married_array = net_income_married_df[(tab,)].to_numpy()
-    net_income_single_head_array = net_income_single_head_df[(tab,)].to_numpy()
-    net_income_single_spouse_array = net_income_single_spouse_df[(tab,)].to_numpy()
-
-    # Ensure that the single head and single spouse arrays are 2D and reshape if necessary
-    if net_income_single_head_array.ndim == 1:
-        net_income_single_head_array = np.expand_dims(net_income_single_head_array, axis=1)
-    if net_income_single_spouse_array.ndim == 1:
-        net_income_single_spouse_array = np.expand_dims(net_income_single_spouse_array, axis=1)
-
+    net_income_married_array = net_incomes[0][(tab,)].to_numpy()
+    net_income_single_head_array = to_2d_array(net_incomes[1][(tab,)].to_numpy())
+    net_income_single_spouse_array = to_2d_array(net_incomes[2][(tab,)].to_numpy())
+    
     # Calculate the net income delta
     net_income_combined_singles = np.add.outer(
         net_income_single_head_array.flatten(), net_income_single_spouse_array.flatten()
@@ -544,8 +490,8 @@ def calculate_net_income_grid(state_code, children_ages, tab):
     net_income_delta = net_income_married_array - net_income_combined_singles
 
     # Return DataFrame with proper column and index structure
-    columns = net_income_married_df[(tab,)].columns
-    index = net_income_married_df.index
+    columns = net_incomes[0][(tab,)].columns
+    index = net_incomes[0].index
     return pd.DataFrame(net_income_delta, columns=columns, index=index)
 
 
@@ -555,8 +501,7 @@ def create_heatmap_chart(state_code, children_ages, tab):
     """
     Create a heatmap for net income levels for married, single head of household, and single spouse situations.
     """
-    x_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
-    y_values = [0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000]
+    x_values = y_values = list(range(0, 90000, 10000))
     data = calculate_net_income_grid(state_code, children_ages, tab)
 
     # Check if there is any change in data
@@ -565,18 +510,13 @@ def create_heatmap_chart(state_code, children_ages, tab):
         return
 
     abs_max = max(abs(data.min().min()), abs(data.max().max()))
-    z_min = -abs_max
-    z_max = abs_max
+    z_min, z_max = -abs_max, abs_max
     color_scale = [(0, "#616161"), (0.5, "#FFFFFF"), (1, "#2C6496")]
 
     # Create heatmap
     fig = px.imshow(
         data,
-        labels=dict(
-            x="Head Employment Income", 
-            y="Spouse Employment Income"  ,
-            color= tab + " Change",
-        ),
+        labels={"x": "Head Employment Income", "y": "Spouse Employment Income", "color": "Net Change"},
         x=x_values,
         y=y_values,
         zmin=z_min,
@@ -590,29 +530,31 @@ def create_heatmap_chart(state_code, children_ages, tab):
         xaxis=dict(
             tickmode="array",
             tickvals=x_values,
-            ticktext=["{}k".format(int(val / 1000)) for val in x_values],
+            ticktext=[f"{val//1000}k" for val in x_values],
             showgrid=True,
             zeroline=False,
-            title=dict(text="Head "+ tab, standoff=15),
+            title=dict(text="Head Employment Income", standoff=15),
         ),
         yaxis=dict(
             tickmode="array",
             tickvals=y_values,
-            ticktext=["{}k".format(int(val / 1000)) for val in y_values],
+            ticktext=[f"{val//1000}k" for val in y_values],
             showgrid=True,
             zeroline=False,
-            title=dict(text="Spouse " + tab, standoff=15),
+            title=dict(text="Spouse Employment Income", standoff=15),
             scaleanchor="x",
             scaleratio=1,
         ),
+        height=600,
+        width=800,
     )
 
-    fig.update_layout(height=600, width=800)
     # Add header
     st.markdown(
-        "<h3 style='text-align: center; color: black;'>Heat Map</h3>",
+        f"<h3 style='text-align: center; color: black;'>Heat Map For {tab}</h3>",
         unsafe_allow_html=True,
     )
+    
     # Display the chart
     st.plotly_chart(fig, use_container_width=True)
 
