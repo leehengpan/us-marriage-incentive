@@ -113,24 +113,27 @@ def calculate_net_income_for_situation(situation):
     combined_df = pd.concat(data_frames, axis=1, keys=data_frames.keys())
     return combined_df
 
+def to_2d_array(array):
+    return np.expand_dims(array, axis=1) if array.ndim == 1 else array
+
+def get_net_income_array(situations, tab):
+    return [to_2d_array(calculate_net_income_for_situation(s)[(tab,)].to_numpy()) for s in situations]
+
 def calculate_net_income_grid(state_code, children_ages, tab, disability_status):
-    def to_2d_array(array):
-        return np.expand_dims(array, axis=1) if array.ndim == 1 else array
-
     situations = create_net_income_situations_with_axes(state_code, children_ages, disability_status)
-    net_incomes = [calculate_net_income_for_situation(s) for s in situations]
+    net_incomes = get_net_income_array(situations, tab)
 
-    net_income_married_array = net_incomes[0][(tab,)].to_numpy()
-    net_income_single_head_array = to_2d_array(net_incomes[1][(tab,)].to_numpy())
-    net_income_single_spouse_array = to_2d_array(net_incomes[2][(tab,)].to_numpy())
+    net_income_married_array = net_incomes[0].reshape(9, 9)
+    net_income_single_head_array = net_incomes[1]
+    net_income_single_spouse_array = net_incomes[2]
 
     net_income_combined_singles = np.add.outer(
         net_income_single_head_array.flatten(), net_income_single_spouse_array.flatten()
     ).reshape(9, 9)
     net_income_delta = net_income_married_array - net_income_combined_singles
 
-    columns = net_incomes[0][(tab,)].columns
-    index = net_incomes[0].index
+    columns = calculate_net_income_for_situation(situations[0])[(tab,)].columns
+    index = calculate_net_income_for_situation(situations[0]).index
     return pd.DataFrame(net_income_delta, columns=columns, index=index)
 
 def create_heatmap_chart(state_code, children_ages, tab, disability_status):
