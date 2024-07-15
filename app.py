@@ -37,8 +37,8 @@ US_TERRITORIES = {
 options = [value for value in statecodes if value not in US_TERRITORIES]
 state_code = st.selectbox("State Code", options)
 head_employment_income = st.number_input("Head Employment Income", min_value=0, step=10000, value=0)
-head_disability = st.checkbox("Head is disabled")
 spouse_employment_income = st.number_input("Spouse Employment Income", min_value=0, step=10000, value=0)
+head_disability = st.checkbox("Head is disabled")
 spouse_disability = st.checkbox("Spouse is disabled")
 num_children = st.number_input("Number of Children", 0)
 children_ages = {num: st.number_input(f"Child {num} Age", 0) for num in range(1, num_children + 1)}
