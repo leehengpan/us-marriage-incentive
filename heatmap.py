@@ -1,4 +1,5 @@
 import pandas as pd
+import streamlit as st
 import numpy as np
 import plotly.express as px
 from policyengine_us import Simulation
@@ -137,6 +138,7 @@ def calculate_net_income_grid(state_code, children_ages, tab, disability_status)
     return pd.DataFrame(net_income_delta, columns=columns, index=index)
 
 def create_heatmap_chart(state_code, children_ages, tab, disability_status):
+    st.markdown("### Situation with varying head and spouse income:")
     x_values = y_values = list(range(0, 90000, 10000))
     data = calculate_net_income_grid(state_code, children_ages, tab, disability_status)
 

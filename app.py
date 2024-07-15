@@ -4,10 +4,12 @@ from policyengine_us.variables.household.demographic.geographic.state_code impor
 import table
 import heatmap
 
+# Streamlit heading and description
 st.header("Marriage Incentive Calculator")
 st.write("This application evaluates marriage penalties and bonuses of couples, based on state and individual employment income")
 st.markdown("This application utilizes the [`policyengine-us` Python package](https://github.com/policyengine/policyengine-us).")
 
+# Streamlit inputs for state code, head income, and spouse income
 statecodes = [s.value for s in StateCode]
 US_TERRITORIES = {
     "GU": "Guam", "MP": "Northern Mariana Islands", "PW": "Palau", 
@@ -25,10 +27,25 @@ children_ages = {num: st.number_input(f"Child {num} Age", 0) for num in range(1,
 disability_status = {"head": head_disability, "spouse": spouse_disability}
 submit = st.button("Calculate")
 
+# Helper functions
+def get_combined_data(programs, index, tab_name):
+    categories = list(programs[0][index].keys())
+    married_values = list(programs[0][index].values())
+    head_values = list(programs[1][index].values())
+    spouse_values = list(programs[2][index].values())
+    separate_values = [x + y for x, y in zip(head_values, spouse_values)]
+    
+    return table.create_table_data(categories, married_values, separate_values, tab_name)
+
+def display_dataframe(df, tab_name):
+    st.markdown("### Current situation:")
+    st.dataframe(df.drop(columns=["Tab"]), hide_index=True)
+    fig = heatmap.create_heatmap_chart(state_code, children_ages, tab_name, disability_status)
+    st.plotly_chart(fig, use_container_width=True)
+
+# Main logic
 if submit:
-    programs = table.get_categorized_programs(
-        state_code, head_employment_income, spouse_employment_income, children_ages, disability_status
-    )
+    programs = table.get_categorized_programs(state_code, head_employment_income, spouse_employment_income, children_ages, disability_status)
 
     programs_list = ["Net income", "Benefits", "Refundable tax credits", "Taxes before refundable credits"]
     married_programs = programs[0][:-3]
@@ -37,58 +54,25 @@ if submit:
     separate = [x + y for x, y in zip(head_separate, spouse_separate)]
 
     total_data = table.create_table_data(programs_list, married_programs, separate, "Summary", filter_zeros=False)
-
-    benefits_categories = list(programs[0][-2].keys())
-    benefits_married = list(programs[0][-2].values())
-    benefits_head = list(programs[1][-2].values())
-    benefits_spouse = list(programs[2][-2].values())
-    benefits_separate = [x + y for x, y in zip(benefits_head, benefits_spouse)]
-
-    benefits_data = table.create_table_data(
-        benefits_categories, benefits_married, benefits_separate, "Benefits Breakdown"
-    )
-
-    credits_categories = list(programs[0][-1].keys())
-    credits_married = list(programs[0][-1].values())
-    credits_head = list(programs[1][-1].values())
-    credits_spouse = list(programs[2][-1].values())
-    credits_separate = [x + y for x, y in zip(credits_head, credits_spouse)]
-
-    credits_data = table.create_table_data(
-        credits_categories, credits_married, credits_separate, "Refundable Credits"
-    )
-
-    taxes_categories = list(programs[0][-3].keys())
-    taxes_married = list(programs[0][-3].values())
-    taxes_head = list(programs[1][-3].values())
-    taxes_spouse = list(programs[2][-3].values())
-    taxes_separate = [x + y for x, y in zip(taxes_head, taxes_spouse)]
-
-    taxes_data = table.create_table_data(
-        taxes_categories, taxes_married, taxes_separate, "Taxes before Refundable Credits"
-    )
+    
+    benefits_data = get_combined_data(programs, -2, "Benefits Breakdown")
+    credits_data = get_combined_data(programs, -1, "Refundable Credits")
+    taxes_data = get_combined_data(programs, -3, "Taxes before Refundable Credits")
 
     all_data = pd.concat([total_data, benefits_data, credits_data, taxes_data])
 
     tab1, tab2, tab3, tab4 = st.tabs(["Summary", "Benefits Breakdown", "Refundable Credits", "Taxes before Refundable Credits"])
+    
     with tab1:
-        st.dataframe(all_data[all_data["Tab"] == "Summary"].drop(columns=["Tab"]), hide_index=True)
+        display_dataframe(all_data[all_data["Tab"] == "Summary"], "Net Income")
     with tab2:
-        st.dataframe(all_data[all_data["Tab"] == "Benefits Breakdown"].drop(columns=["Tab"]), hide_index=True)
+        display_dataframe(all_data[all_data["Tab"] == "Benefits Breakdown"], "Benefits")
     with tab3:
-        st.dataframe(all_data[all_data["Tab"] == "Refundable Credits"].drop(columns=["Tab"]), hide_index=True)
+        display_dataframe(all_data[all_data["Tab"] == "Refundable Credits"], "Refundable Tax Credits")
     with tab4:
-        st.dataframe(all_data[all_data["Tab"] == "Taxes before Refundable Credits"].drop(columns=["Tab"]), hide_index=True)
+        display_dataframe(all_data[all_data["Tab"] == "Taxes before Refundable Credits"], "Tax Before Refundable Credits")
 
-    with tab1:
-        fig = heatmap.create_heatmap_chart(state_code, children_ages, "Net Income", disability_status)
-        st.plotly_chart(fig, use_container_width=True)
-    with tab2:
-        fig = heatmap.create_heatmap_chart(state_code, children_ages, "Benefits", disability_status)
-        st.plotly_chart(fig, use_container_width=True)
-    with tab3:
-        fig = heatmap.create_heatmap_chart(state_code, children_ages, "Refundable Tax Credits", disability_status)
-        st.plotly_chart(fig, use_container_width=True)
-    with tab4:
-        fig = heatmap.create_heatmap_chart(state_code, children_ages, "Tax Before Refundable Credits", disability_status)
-        st.plotly_chart(fig, use_container_width=True)
+
+# Add the note at the bottom
+st.markdown("***")
+st.markdown("*We attribute all dependents to the head of household when considering unamrried filers*")
