@@ -144,7 +144,8 @@ def create_heatmap_chart(state_code, children_ages, tab, disability_status):
 
     if not np.any(data.values):
         return "No changes in the net income data."
-
+    if tab == "Tax Before Refundable Credits":
+        data = -data
     abs_max = max(abs(data.min().min()), abs(data.max().max()))
     z_min, z_max = -abs_max, abs_max
     color_scale = [(0, "#616161"), (0.5, "#FFFFFF"), (1, "#2C6496")]
