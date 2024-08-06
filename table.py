@@ -42,6 +42,7 @@ def create_situation(state_code, head_income, is_disabled, spouse_income=None, c
         situation["people"][f"child {key}"] = {
             "age": {YEAR: value},
             "employment_income": {YEAR: 0},
+            "is_disabled": is_disabled.get(f'child_{key}', False)
         }
         members.append(f"child {key}")
     situation["families"] = {"your family": {"members": members}}
