@@ -67,6 +67,7 @@ def create_situation_with_axes(state_code, head_employment_income, spouse_employ
         situation["people"][f"child {key}"] = {
             "age": {YEAR: value},
             "employment_income": {YEAR: 0},
+            "is_disabled": disability_status.get(f'child_{key}', False)
         }
         members.append(f"child {key}")
     situation["families"] = {"your family": {"members": members}}
