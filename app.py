@@ -23,8 +23,13 @@ spouse_employment_income = st.number_input("Spouse Employment Income", min_value
 head_disability = st.checkbox("Head is disabled")
 spouse_disability = st.checkbox("Spouse is disabled")
 num_children = st.number_input("Number of Children", 0)
-children_ages = {num: st.number_input(f"Child {num} Age", 0) for num in range(1, num_children + 1)}
+children_ages = {}
 disability_status = {"head": head_disability, "spouse": spouse_disability}
+
+for num in range(1, num_children + 1):
+    children_ages[num] = st.number_input(f"Child {num} Age", 0)
+    disability_status[f'child_{num}'] = st.checkbox(f"Child {num} is disabled")
+
 submit = st.button("Calculate")
 
 # Helper functions
