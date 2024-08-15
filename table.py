@@ -26,11 +26,12 @@ def create_situation(state_code, head_income, is_disabled, spouse_income=None, c
             "you": {
                 "age": {YEAR: DEFAULT_AGE},
                 "employment_income": {YEAR: head_income},
-                "is_disabled": is_disabled['head'],
+                "is_disabled": is_disabled['head']
             }
         }
     }
     members = ["you"]
+    marital_unit_members = ["you"]
     if spouse_income is not None:
         situation["people"]["your partner"] = {
             "age": {YEAR: DEFAULT_AGE},
@@ -38,15 +39,22 @@ def create_situation(state_code, head_income, is_disabled, spouse_income=None, c
             "is_disabled": is_disabled['spouse']
         }
         members.append("your partner")
-    for key, value in children_ages.items():
-        situation["people"][f"child {key}"] = {
-            "age": {YEAR: value},
-            "employment_income": {YEAR: 0},
-            "is_disabled": is_disabled.get(f'child_{key}', False)
-        }
-        members.append(f"child {key}")
+        marital_unit_members.append("your partner")
+    if children_ages:
+        for key, value in children_ages.items():
+            situation["people"][f"child_{key}"] = {
+                "age": value,
+                "employment_income": {YEAR: 0},
+                "is_disabled": is_disabled[f'child_{key}']
+            }
+            members.append(f"child_{key}")
+    
     situation["families"] = {"your family": {"members": members}}
-    situation["marital_units"] = {"your marital unit": {"members": members}}
+    situation["marital_units"] = {"your marital unit": {"members": marital_unit_members}}
+    # add marrital units for children
+    for key, value in children_ages.items():
+        situation["marital_units"][f"child_{key}'s marital unit"] = {"marital_unit_id": {YEAR: int(key)},"members": [f"child_{key}"]}
+
     situation["tax_units"] = {"your tax unit": {"members": members}}
     situation["spm_units"] = {"your spm_unit": {"members": members}}
     situation["households"] = {
