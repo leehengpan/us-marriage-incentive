@@ -5,6 +5,7 @@ from policyengine_us.variables.household.income.household.household_benefits imp
 from policyengine_us.variables.household.income.household.household_tax_before_refundable_credits import household_tax_before_refundable_credits as HouseholdTaxBeforeRefundableCredits
 import pkg_resources
 import yaml
+import copy
 
 # Constants
 YEAR = "2024"
@@ -115,7 +116,10 @@ def get_programs(state_code, head_employment_income, disability_status, spouse_e
 def get_categorized_programs(state_code, head_employment_income, spouse_employment_income, children_ages, disability_status):
     programs_married = get_programs(state_code, head_employment_income, disability_status, spouse_employment_income, children_ages)
     programs_head_if_single_with_children = get_programs(state_code, head_employment_income, disability_status, None, children_ages)
-    programs_spouse_if_single_without_children = get_programs(state_code, spouse_employment_income, disability_status, None, {})
+    disability_status_spouse_as_head = copy.deepcopy(disability_status)
+    disability_status_spouse_as_head['head'] = disability_status['spouse']
+    del disability_status_spouse_as_head['spouse']
+    programs_spouse_if_single_without_children = get_programs(state_code, spouse_employment_income, disability_status_spouse_as_head, None, {})
     return [
         programs_married,
         programs_head_if_single_with_children,
