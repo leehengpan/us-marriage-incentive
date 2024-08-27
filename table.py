@@ -65,6 +65,9 @@ def create_situation(state_code, head_income, is_disabled, spouse_income=None, c
 
 def calculate_values(categories, simulation, year):
     result_dict = {}
+    if categories == HouseholdBenefits.adds:
+        categories = ['social_security', 'ssi', 'snap', 'wic', 'free_school_meals', 'reduced_price_school_meals', 'spm_unit_broadband_subsidy', 'tanf', 'high_efficiency_electric_home_rebate', 'residential_efficiency_electrification_rebate', 'unemployment_compensation', 'basic_income', 'spm_unit_capped_housing_subsidy', 'household_state_benefits']
+    
     for category in categories:
         amount = int(simulation.calculate(category, year, map_to="household")[0])
         result_dict[category] = amount
@@ -95,8 +98,8 @@ def get_programs(state_code, head_employment_income, disability_status, spouse_e
 
     household_net_income = int(simulation.calculate("household_net_income", YEAR))
     household_benefits = int(simulation.calculate("household_benefits", YEAR))
-    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", int(YEAR)))
-    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", int(YEAR)))
+    household_refundable_tax_credits = int(simulation.calculate("household_refundable_tax_credits", YEAR))
+    household_tax_before_refundable_credits = int(simulation.calculate("household_tax_before_refundable_credits", YEAR))
 
     benefits_dict = calculate_values(benefits_categories, simulation, YEAR)
     credits_dict = calculate_values(refundable_credits, simulation, YEAR)
