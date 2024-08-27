@@ -3,6 +3,7 @@ import streamlit as st
 import numpy as np
 import plotly.express as px
 from policyengine_us import Simulation
+import copy
 
 # Constants
 YEAR = "2024"
@@ -22,6 +23,7 @@ def create_situation_with_axes(state_code, head_employment_income, spouse_employ
         }
     }
     members = ["you"]
+    marital_unit_members = ["you"]
     if spouse_employment_income is not None:
         situation["people"]["your partner"] = {
             "age": {YEAR: DEFAULT_AGE},
@@ -29,6 +31,7 @@ def create_situation_with_axes(state_code, head_employment_income, spouse_employ
             "is_disabled": disability_status['spouse'] if disability_status else False
         }
         members.append("your partner")
+        marital_unit_members.append("your partner")
         situation["axes"] = [
             [
                 {
@@ -63,15 +66,20 @@ def create_situation_with_axes(state_code, head_employment_income, spouse_employ
                 }
             ]
         ]
+        
     for key, value in children_ages.items():
-        situation["people"][f"child {key}"] = {
-            "age": {YEAR: value},
-            "employment_income": {YEAR: 0},
-            "is_disabled": disability_status.get(f'child_{key}', False)
+        situation["people"][f"child_{key}"] = {
+                "age": value,
+                "employment_income": {YEAR: 0},
+                "is_disabled": disability_status[f'child_{key}']
         }
-        members.append(f"child {key}")
+        members.append(f"child_{key}")
+
     situation["families"] = {"your family": {"members": members}}
-    situation["marital_units"] = {"your marital unit": {"members": members}}
+    situation["marital_units"] = {"your marital unit": {"members": marital_unit_members}}
+    # add marrital units for children
+    for key, value in children_ages.items():
+        situation["marital_units"][f"child_{key}'s marital unit"] = {"marital_unit_id": {YEAR: int(key)},"members": [f"child_{key}"]}
     situation["tax_units"] = {"your tax unit": {"members": members}}
     situation["spm_units"] = {"your spm_unit": {"members": members}}
     situation["households"] = {
@@ -84,7 +92,10 @@ def create_net_income_situations_with_axes(state_code, children_ages, disability
     spouse_employment_income = 80000
     married_situation = create_situation_with_axes(state_code, head_employment_income, spouse_employment_income, children_ages, disability_status)
     single_head_situation = create_situation_with_axes(state_code, head_employment_income, None, children_ages, disability_status)
-    single_spouse_situation = create_situation_with_axes(state_code, spouse_employment_income, None, {}, disability_status)
+    disability_status_spouse_as_head = copy.deepcopy(disability_status)
+    disability_status_spouse_as_head['head'] = disability_status['spouse']
+    del disability_status_spouse_as_head['spouse']
+    single_spouse_situation = create_situation_with_axes(state_code, spouse_employment_income, None, {}, disability_status_spouse_as_head)
 
     return married_situation, single_head_situation, single_spouse_situation
 
